@@ -12,7 +12,6 @@
             var consoleElements = document.getElementById("console").getElementsByClassName('console-line');
 
             if (consoleElements.length) {
-                console.log(consoleElements[consoleElements.length - 1]);
                 consoleElements[consoleElements.length - 1].scrollIntoView();
             }
         }, 100);
@@ -26,6 +25,7 @@
             { isDebug: true });
 
         applicationModel.console([]);
+        applicationModel.showConsole(false);
 
         applicationModel.client.on('close', () => { if (applicationModel.client == client) { applicationModel.logout(); }});
         applicationModel.client.on('kicked', () => { if (applicationModel.client == client) { applicationModel.logout(); }});
@@ -117,8 +117,10 @@
         isSending: ko.observable(false),
         login: (username, password) => login(username.trim(), password, applicationModel),
         logout: () => logout(applicationModel),
-        send: () => sendCommand(applicationModel),
         password: ko.observable(),
+        send: () => sendCommand(applicationModel),
+        showConsole: ko.observable(false),
+        toggleConsole: () => applicationModel.showConsole(!applicationModel.showConsole()),
         username: ko.observable()        
     };
 

@@ -21,9 +21,9 @@
 
 <body>
     <div class="container">
-        <div data-bind="visible: isSending()" class="u-page-cover"></div>
+        <div data-bind="visible: isSending()" class="hz-page-cover"></div>
 
-        <nav class="navbar navbar-expand-lg navbar-light bg-light u-tspace">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light mt-4">
             <form data-bind="visible: !credentials()" class="form-inline my-2 my-lg-0">
                 <input type="text" data-bind="textInput: username" class="form-control mr-sm-2" name="username" placeholder="Username" autocomplete="username">
                 <input type="password" data-bind="textInput: password" class="form-control mr-sm-2" name="password" placeholder="Password" autocomplete="current-password">
@@ -34,19 +34,25 @@
             </form>
 
             <form data-bind="visible: credentials()" class="form-inline flex-grow-1 my-2 my-lg-0">
-                <div class="ml-auto">
-                    <b><span data-bind="text: (credentials() || {}).username || ''" class="u-inline-rpad"></span></b>
+                <button type="button" data-bind="click: toggleConsole.bind(null)" class="btn btn-secondary my-2 my-sm-0">
+                    <span class="fas fa-clipboard-check" aria-hidden="false" title="Console"></span>
+                </button>
+                <div class="ml-auto mr-3">
+                    <b><span data-bind="text: (credentials() || {}).username || ''"></span></b>
                 </div>
                 <button type="button" data-bind="click: logout.bind(null)" class="btn btn-danger my-2 my-sm-0">
-                    <span class="fas fa-sign-out-alt" aria-hidden="true" title="Logout"></span>
+                    <span class="fas fa-sign-out-alt" aria-hidden="false" title="Logout"></span>
                 </button>
             </form>
         </nav>
 
         <div data-bind="visible: credentials()">
-            <div id="console" class="m-4 p-3 bg-dark overflow-auto" style="height:600px">
+            <div data-bind="visible: !showConsole()" class="m-4 p-3 bg-dark overflow-auto hz-canvas">
+                <canvas id="canvas"></canvas>
+            </div>
+            <div id="console" data-bind="visible: showConsole()" class="m-4 p-3 bg-dark overflow-auto hz-console">
                 <div data-bind="foreach: console">
-                    <div data-bind="attr: { 'class': (colour || 'text-white') }"><span class="console-line" data-bind="text: text"> </span></div>
+                    <div data-bind="attr: { 'class': (colour || 'text-white') }"><span class="console-line" data-bind="text: text"></span></div>
                 </div>
             </div>
             <form class="form-inline mx-4">
