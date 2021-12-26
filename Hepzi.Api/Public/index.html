@@ -47,8 +47,8 @@
         </nav>
 
         <div data-bind="visible: credentials()">
-            <div data-bind="visible: !showConsole()" class="m-4 p-3 bg-dark overflow-auto hz-canvas">
-                <canvas id="canvas"></canvas>
+            <div data-bind="visible: !showConsole()" class="m-4 p-0 bg-dark hz-canvas">
+                <canvas id="canvas" class="hz-canvas w-100 p-0 m-0"></canvas>
             </div>
             <div id="console" data-bind="visible: showConsole()" class="m-4 p-3 bg-dark overflow-auto hz-console">
                 <div data-bind="foreach: console">
