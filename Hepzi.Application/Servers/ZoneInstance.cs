@@ -1,0 +1,110 @@
+﻿using Hepzi.Application.Helpers;
+using Hepzi.Application.Interfaces;
+using Hepzi.Application.Models;
+using Hepzi.Application.Sessions;
+using Hepzi.Utilities.Helpers;
+using Hepzi.Utilities.Interfaces;
+using Hepzi.Utilities.Models;
+using System.Collections.Concurrent;
+using System.Text;
+
+namespace Hepzi.Application.Servers
+{
+    public class ZoneInstance : IZoneInstance
+    {
+        private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
+        private readonly SessionActions _actions = new();
+        private readonly object _instanceSessionLock = new();
+        private readonly ConcurrentDictionary<int, Session<ZoneSessionState>> _roster = new();
+
+
+        public SessionWelcome? AddSession(Session<ZoneSessionState> session, object token)
+        {
+            ISessionAction actions;
+            var initialAction = session.AddInstanceSession();
+
+            lock (_instanceSessionLock)
+            {
+                if (_roster.TryRemove(session.UserId, out var existing) && existing != null)
+                {
+                    Terminate(existing);
+                }
+                _actions.AddAction(initialAction);
+
+                var currentAction = _actions.Current;
+                var sessions = _roster.Values.Select(s => (ISession)s).ToArray();
+
+                actions = InitialSessionAction.BuildInitialActionChain(session, sessions, currentAction);
+                _roster[session.UserId] = session;
+            }
+
+            return new SessionWelcome(
+                new byte[] { (byte)ClientResponseType.Welcome },
+                session,
+                token,
+                actions);
+        }
+
+
+        public TimeSpan ConnectionTimeout => TimeSpan.FromSeconds(20); // TODO: settings
+
+
+        public bool ProcessClientRequest(ISession session, ArraySegment<byte> data, object token)
+        {
+            var result = false;
+
+            if (session.HasToken(token))
+            {
+                if (data.Count == 0)
+                {
+                    _actions.AddAction(session.Heartbeat(), session.UserId);
+                }
+                else
+                {
+                    var buffer = new BufferWrapper(data);
+                    var command = (ClientRequestType)buffer.Read();
+
+                    try
+                    {
+                        switch (command)
+                        {
+                            case ClientRequestType.InstanceMessage:
+                                _actions.AddAction(session.InstanceMessage(Encoding.UTF8.GetString(data.Skip(1).ToArray())));
+                                break;
+
+                            case ClientRequestType.KickClient:
+                                _actions.AddAction(session.KickClient(), buffer.ReadInt(), true);
+                                break;
+
+                            default:
+                                break;
+                        }
+                    }
+                    catch (Exception exception)
+                    { 
+                        // TODO: log error
+                    }
+                }
+                result = true;
+            }
+
+            return result;
+        }
+
+
+        public void RemoveSession(ISession session, object token)
+        {
+            lock (_instanceSessionLock)
+            {
+                if (_roster.TryGetValue(session.UserId, out var existing) && existing != null && existing.HasToken(token))
+                {
+                    _roster.Remove(session.UserId, out _);
+                    Terminate(existing);
+                }
+            }
+        }
+
+
+        private void Terminate(Session<ZoneSessionState> session) => _actions.AddAction(session.RemoveInstanceSession());
+    }
+}

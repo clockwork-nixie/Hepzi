@@ -4,6 +4,5 @@
     {
         double WebSocketInitialiseSeconds { get; }
         int WebSocketReadBufferSize { get; }
-        int WebSocketWriteBufferSize { get; }
     }
 }

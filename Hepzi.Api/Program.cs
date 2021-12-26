@@ -1,33 +1,35 @@
 using Hepzi.Api.Helpers;
+using Hepzi.Api.Models;
 using Hepzi.Application.Interfaces;
-using Hepzi.Application.Models;
 using Hepzi.Application.Servers;
 using Hepzi.Utilities.Helpers;
 using Hepzi.Utilities.Interfaces;
 using NLog.Web;
 
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions {
+    WebRootPath = @".\Public",
+    Args = args
+});
 
-builder.Host.ConfigureWebHostDefaults(webBuilder => 
-    webBuilder
-        .UseWebRoot(@".\Public")
-        .UseKestrel(options => options.ListenAnyIP(443, o => o.UseHttps())))
-    .ConfigureLogging(logging => {
-            logging.ClearProviders();
-            logging.SetMinimumLevel(LogLevel.Trace);
-        })
-    .UseNLog();
-
+builder.Host.ConfigureLogging(logging => {
+    logging.ClearProviders();
+    logging.SetMinimumLevel(LogLevel.Trace);
+}).UseNLog();
 
 var services = builder.Services;
+var applicationSettings = new ApplicationSettings {
+    WebSocketInitialiseSeconds = 5,
+    WebSocketReadBufferSize = 8096
+};
 
 services.AddControllers();
-services.AddSingleton<IWebSocketClientFactory<User>, WebSocketClientFactory<User>>();
-services.AddSingleton<IWebSocketClientSettings, IWebSocketClientSettings>();
-services.AddSingleton<ILoginServer<User>, LoginServer>();
+services.AddSingleton<IZoneInstanceServer, ZoneInstanceServer>();
+services.AddSingleton<ILoginServer, LoginServer>();
 services.AddSingleton<IUserRepository, MemoryUserRepository>();
-
+services.AddSingleton<IWebSocketClientFactory, WebSocketClientFactory>();
+services.AddSingleton<IWebSocketClientSettings>((IServiceProvider provider) => applicationSettings);
+services.AddTransient<IZoneInstance, ZoneInstance>();
 
 var application = builder.Build();
 
@@ -40,7 +42,8 @@ application.UseHttpsRedirection();
 application.UseRouting();
 application.UseAuthorization();
 application.UseStaticFiles();
-application.Use(ApiPlugins.HandleSocketSession);
+application.UseWebSockets();
+application.Use(ApiPlugins.HandleSocketSession<IZoneInstanceServer>);
 application.Use(ApiPlugins.RedirectRootToLandingPage);
 application.MapControllers();
 

@@ -1,15 +1,13 @@
 ﻿using Hepzi.Utilities.Interfaces;
-using Hepzi.Utilities.Models;
 
 namespace Hepzi.Utilities.Helpers
 {
-    public class WebSocketClientFactory<TUser> : IWebSocketClientFactory<TUser>
-        where TUser : UserIdentity
+    public class WebSocketClientFactory : IWebSocketClientFactory
     {
-        public WebSocketClientFactory(IWebSocketClientSettings settings) => Settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        private readonly IWebSocketClientSettings _settings;
 
-        public IWebSocketClientSettings Settings { get; }
+        public WebSocketClientFactory(IWebSocketClientSettings settings) => _settings = settings ?? throw new ArgumentNullException(nameof(settings));
 
-        public IApplicationClient<TUser> CreateClient(IWebSocket socket) => new WebSocketClient<TUser>(socket, Settings);
+        public ISessionClient CreateClient(IWebSocket socket) => new WebSocketClient(socket, _settings);
     }
 }

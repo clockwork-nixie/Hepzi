@@ -6,6 +6,5 @@ namespace Hepzi.Api.Models
     {
         public double WebSocketInitialiseSeconds { get; set; }
         public int WebSocketReadBufferSize { get; set; }
-        public int WebSocketWriteBufferSize { get; set; }
     }
 }

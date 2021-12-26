@@ -1,6 +1,4 @@
-﻿using Hepzi.Application.Interfaces;
-using Hepzi.Application.Models;
-using Hepzi.Utilities.Helpers;
+﻿using Hepzi.Utilities.Helpers;
 using Hepzi.Utilities.Interfaces;
 using System.Net.WebSockets;
 
@@ -8,7 +6,8 @@ namespace Hepzi.Api.Helpers
 {
     public static class ApiPlugins
     {
-        public static async Task HandleSocketSession(HttpContext context, Func<Task> next)
+        public static async Task HandleSocketSession<TServer>(HttpContext context, Func<Task> next)
+            where TServer : IInstanceServer
         {
             if (context.WebSockets.IsWebSocketRequest && context.Request.Path == "/client")
             {
@@ -16,11 +15,10 @@ namespace Hepzi.Api.Helpers
 
                 if (socket?.State == WebSocketState.Open)
                 {
-                    var clientFactory = (IWebSocketClientFactory<User>?)context.RequestServices.GetService(typeof(IWebSocketClientFactory<User>));
-                    var loginServer = (ILoginServer<User>?)context.RequestServices.GetService(typeof(ILoginServer<User>));
-                    var applicationServer = (IApplication?)context.RequestServices.GetService(typeof(IApplication));
+                    var clientFactory = (IWebSocketClientFactory?)context.RequestServices.GetService(typeof(IWebSocketClientFactory));
+                    var instanceServer = (TServer?)context.RequestServices.GetService(typeof(TServer));
 
-                    if (clientFactory == null || loginServer == null || applicationServer == null)
+                    if (clientFactory == null || instanceServer == null)
                     {
                         // TODO: Log
                     }
@@ -28,8 +26,7 @@ namespace Hepzi.Api.Helpers
                     {
                         var client = clientFactory.CreateClient(new WebSocketWrapper(socket));
 
-                        client.OnConnect += loginServer.ValidateUser;
-                        client.OnDataReceived += applicationServer.ProcessClientRequest;
+                        client.OnConnect += instanceServer.JoinInstance;
 
                         await client.Run();
                     }

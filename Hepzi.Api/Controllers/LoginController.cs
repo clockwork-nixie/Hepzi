@@ -1,6 +1,5 @@
-﻿using Hepzi.Application.Models;
+﻿using Hepzi.Api.Models;
 using Hepzi.Utilities.Interfaces;
-using Hepzi.Utilities.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hepzi.Api.Controllers
@@ -10,15 +9,14 @@ namespace Hepzi.Api.Controllers
     public class LoginController : ControllerBase
     {
         private readonly ILogger<LoginController> _logger;
-        private readonly ILoginServer<User> _loginServer;
+        private readonly ILoginServer _loginServer;
 
-        public LoginController(ILogger<LoginController> logger, ILoginServer<User> loginServer)
+        public LoginController(ILogger<LoginController> logger, ILoginServer loginServer)
         {
             _logger = logger;
             _loginServer = loginServer;
         }
         
-
 
         public class Credentials
         {
@@ -28,25 +26,25 @@ namespace Hepzi.Api.Controllers
 
 
         [HttpPost]
-        public ActionResult<UserIdentity> Authenticate([FromBody] Credentials? credentials)
+        public ActionResult<LoginResponse> Authenticate([FromBody] Credentials? credentials)
         {
-            ActionResult<UserIdentity> result;
-            var user = credentials?.Username != null && credentials.Password != null?
-                _loginServer.AuthenticateUser(credentials.Username, credentials.Password):
+            ActionResult<LoginResponse> response;
+            var result = credentials?.Username != null && credentials.Password != null?
+                _loginServer.CreateSession(credentials.Username, credentials.Password):
                 null;
 
-            if (user == null)
+            if (result == null)
             {
                 _logger.LogTrace($">>> {nameof(LoginController)}.{nameof(Authenticate)} => Unauthorised ({credentials?.Username})");
-                result = Unauthorized();
+                response = Unauthorized();
             }
             else
             {
                 _logger.LogTrace($">>> {nameof(LoginController)}.{nameof(Authenticate)} => OK ({credentials?.Username})");
-                result = user;
+                response = new LoginResponse(result);
             }
 
-            return result;
+            return response;
         }
     }
 }   

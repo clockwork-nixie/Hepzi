@@ -1,0 +1,16 @@
+﻿{
+  "compilerOptions": {
+    "target": "ES2015",
+    "module": "System",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmitOnError": true,
+    "removeComments": true,
+    "sourceMap": true,
+    "outFile": "../Public/dist/hepzi.js"
+  },
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Recommended"
+}

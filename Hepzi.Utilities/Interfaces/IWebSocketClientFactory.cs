@@ -1,10 +1,7 @@
-﻿using Hepzi.Utilities.Models;
-
-namespace Hepzi.Utilities.Interfaces
+﻿namespace Hepzi.Utilities.Interfaces
 {
-    public interface IWebSocketClientFactory<TUser>
-        where TUser : UserIdentity
+    public interface IWebSocketClientFactory
     {
-        IApplicationClient<TUser> CreateClient(IWebSocket socket);
+        ISessionClient CreateClient(IWebSocket socket);
     }
 }
