@@ -2,6 +2,7 @@
 /// <reference path="clientCommandInterpreter.ts" />
 /// <reference path="clientResponseParser.ts" />
 /// <reference path="eventEmitter.ts" />
+/// <reference path="guiClient.ts" />
 
 namespace Hepzi {
     export type ApplicationClientEventName = 'close' | 'kicked' | 'message';
@@ -14,7 +15,7 @@ namespace Hepzi {
     export class ApplicationClient extends EventEmitter<ApplicationClientEventName, any> {
         private _commandInterpreter: ClientCommandInterpreter;
         private _isDebug: boolean;
-
+        private _gui: GuiClient;
         private _responseParser: ClientResponseParser;
         private _socket: WebSocketClient;
         private _userId: number;
@@ -30,6 +31,7 @@ namespace Hepzi {
             options = options || {};
 
             this._commandInterpreter = new ClientCommandInterpreter();
+            this._gui = new GuiClient();
             this._isDebug = options.isDebug ?? false;
             this._responseParser = new ClientResponseParser();
             this._socket = socket;
@@ -101,6 +103,10 @@ namespace Hepzi {
                     result.category !== ClientCategory.Debug &&
                     result.category !== ClientCategory.Error))) {
                     this.emit('message', { text: result.message, colour: result.determineTextColourClass() });
+                }
+
+                if (result.responseType === ClientResponseType.Welcome && result.category !== ClientCategory.Error) {
+                    this._gui.initialise('canvas');
                 }
 
                 if (result.isTerminal) {

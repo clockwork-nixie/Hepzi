@@ -259,6 +259,19 @@ var Hepzi;
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
+    class GuiClient {
+        initialise(canvasName) {
+            const canvas = document.getElementById(canvasName);
+            if (canvas && canvas instanceof HTMLCanvasElement) {
+                console.log("YAY");
+                var engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+            }
+        }
+    }
+    Hepzi.GuiClient = GuiClient;
+})(Hepzi || (Hepzi = {}));
+var Hepzi;
+(function (Hepzi) {
     class ApplicationClient extends Hepzi.EventEmitter {
         constructor(userId, socket, options) {
             var _a;
@@ -268,6 +281,7 @@ var Hepzi;
             super();
             options = options || {};
             this._commandInterpreter = new Hepzi.ClientCommandInterpreter();
+            this._gui = new Hepzi.GuiClient();
             this._isDebug = (_a = options.isDebug) !== null && _a !== void 0 ? _a : false;
             this._responseParser = new Hepzi.ClientResponseParser();
             this._socket = socket;
@@ -321,6 +335,9 @@ var Hepzi;
                 if (result.message && (this._isDebug || (result.category !== Hepzi.ClientCategory.Debug &&
                     result.category !== Hepzi.ClientCategory.Error))) {
                     this.emit('message', { text: result.message, colour: result.determineTextColourClass() });
+                }
+                if (result.responseType === Hepzi.ClientResponseType.Welcome && result.category !== Hepzi.ClientCategory.Error) {
+                    this._gui.initialise('canvas');
                 }
                 if (result.isTerminal) {
                     const self = this;
