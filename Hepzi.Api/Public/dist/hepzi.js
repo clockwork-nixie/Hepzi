@@ -261,6 +261,7 @@ var Hepzi;
 (function (Hepzi) {
     class GuiClient {
         constructor(factory, canvasName) {
+            this._keysDown = {};
             this._renderLoop = null;
             const canvas = canvasName ? document.getElementById(canvasName) : null;
             if (!canvas || !(canvas instanceof HTMLCanvasElement)) {
@@ -271,7 +272,68 @@ var Hepzi;
             this._engine = new BABYLON.Engine(this._canvas, true, { preserveDrawingBuffer: true, stencil: true });
             this._isDebug = factory.isDebug('GuiClient');
             this._scene = null;
+            document.addEventListener('mouseleave', () => self.onMouseLeave());
+            canvas.addEventListener('mouseenter', () => canvas.focus());
             window.addEventListener('resize', () => self._engine.resize());
+        }
+        addAvatar(session) {
+            const scene = this._scene;
+            let avatar = null;
+            if (scene) {
+                const material = new BABYLON.StandardMaterial('material', scene);
+                material.alpha = 1;
+                material.diffuseColor = new BABYLON.Color3(1.0, 0.2, 0.7);
+                const sphere = BABYLON.Mesh.CreateSphere('sphere', 16, 2, scene, false, BABYLON.Mesh.FRONTSIDE);
+                sphere.position.y = 1;
+                sphere.material = material;
+            }
+            return avatar;
+        }
+        addKeyboardHandler() {
+            const self = this;
+            const scene = this._scene;
+            scene === null || scene === void 0 ? void 0 : scene.onKeyboardObservable.add((kbInfo) => {
+                if (self._scene === scene) {
+                    switch (kbInfo.type) {
+                        case BABYLON.KeyboardEventTypes.KEYDOWN:
+                            console.log("KEY DOWN: ", kbInfo.event.key, kbInfo.event.code, kbInfo.event.shiftKey);
+                            break;
+                        case BABYLON.KeyboardEventTypes.KEYUP:
+                            console.log("KEY UP: ", kbInfo.event.key, kbInfo.event.code, kbInfo.event.shiftKey);
+                            break;
+                    }
+                }
+            });
+        }
+        addMouseHandler() {
+            const self = this;
+            const scene = this._scene;
+            scene === null || scene === void 0 ? void 0 : scene.onPointerObservable.add((pointerInfo) => {
+                if (self._scene === scene) {
+                    switch (pointerInfo.type) {
+                        case BABYLON.PointerEventTypes.POINTERDOWN:
+                            console.log("POINTER DOWN");
+                            break;
+                        case BABYLON.PointerEventTypes.POINTERUP:
+                            console.log("POINTER UP");
+                            break;
+                        case BABYLON.PointerEventTypes.POINTERMOVE:
+                            break;
+                        case BABYLON.PointerEventTypes.POINTERWHEEL:
+                            console.log("POINTER WHEEL");
+                            break;
+                        case BABYLON.PointerEventTypes.POINTERPICK:
+                            console.log("POINTER PICK");
+                            break;
+                        case BABYLON.PointerEventTypes.POINTERTAP:
+                            console.log("POINTER TAP");
+                            break;
+                        case BABYLON.PointerEventTypes.POINTERDOUBLETAP:
+                            console.log("POINTER DOUBLE-TAP");
+                            break;
+                    }
+                }
+            });
         }
         createScene() {
             if (this._isDebug) {
@@ -285,13 +347,16 @@ var Hepzi;
             camera.setTarget(BABYLON.Vector3.Zero());
             camera.attachControl(this._canvas, false);
             const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), scene);
-            const sphere = BABYLON.Mesh.CreateSphere('sphere', 16, 2, scene, false, BABYLON.Mesh.FRONTSIDE);
-            sphere.position.y = 1;
             const ground = BABYLON.Mesh.CreateGround('terrain', 6, 6, 2, scene, false);
             this._scene = scene;
+            this.addKeyboardHandler();
+            this.addMouseHandler();
             if (this._isDebug) {
                 console.log('SCENE CREATED');
             }
+        }
+        onMouseLeave() {
+            console.log('MouseLeave');
         }
         startRun() {
             const self = this;
@@ -393,6 +458,7 @@ var Hepzi;
                 }
                 if (result.responseType === Hepzi.ClientResponseType.Welcome && result.category !== Hepzi.ClientCategory.Error) {
                     this._gui.createScene();
+                    this._gui.addAvatar({});
                     this._gui.startRun();
                 }
                 if (result.isTerminal) {

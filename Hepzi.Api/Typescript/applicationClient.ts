@@ -109,6 +109,7 @@ namespace Hepzi {
 
                 if (result.responseType === ClientResponseType.Welcome && result.category !== ClientCategory.Error) {
                     this._gui.createScene();
+                    this._gui.addAvatar({});
                     this._gui.startRun();
                 }
 
