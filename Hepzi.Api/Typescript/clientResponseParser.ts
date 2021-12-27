@@ -42,7 +42,7 @@ namespace Hepzi {
 
                 switch (result.responseType) {
                     case ClientResponseType.Welcome:
-                        result.log = 'CONNECTED';
+                        result.log = 'JOINING';
                         result.message = 'Connected to instance.';
                         break;
 

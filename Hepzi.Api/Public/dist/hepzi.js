@@ -180,7 +180,7 @@ var Hepzi;
                 result = new Hepzi.ClientResponse(buffer.getByte());
                 switch (result.responseType) {
                     case Hepzi.ClientResponseType.Welcome:
-                        result.log = 'CONNECTED';
+                        result.log = 'JOINING';
                         result.message = 'Connected to instance.';
                         break;
                     case Hepzi.ClientResponseType.Heartbeat:
@@ -260,29 +260,67 @@ var Hepzi;
 var Hepzi;
 (function (Hepzi) {
     class GuiClient {
-        initialise(canvasName) {
-            const canvas = document.getElementById(canvasName);
-            if (canvas && canvas instanceof HTMLCanvasElement) {
-                console.log("YAY");
-                var engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
-                var createScene = function () {
-                    var scene = new BABYLON.Scene(engine);
-                    var camera = new BABYLON.FreeCamera('camera1', new BABYLON.Vector3(0, 5, -10), scene);
-                    camera.setTarget(BABYLON.Vector3.Zero());
-                    camera.attachControl(canvas, false);
-                    var light = new BABYLON.HemisphericLight('light1', new BABYLON.Vector3(0, 1, 0), scene);
-                    var sphere = BABYLON.Mesh.CreateSphere('sphere1', 16, 2, scene, false, BABYLON.Mesh.FRONTSIDE);
-                    sphere.position.y = 1;
-                    var ground = BABYLON.Mesh.CreateGround('ground1', 6, 6, 2, scene, false);
-                    return scene;
-                };
-                var scene = createScene();
-                engine.runRenderLoop(function () {
-                    scene.render();
-                });
-                window.addEventListener('resize', function () {
-                    engine.resize();
-                });
+        constructor(factory, canvasName) {
+            this._renderLoop = null;
+            const canvas = canvasName ? document.getElementById(canvasName) : null;
+            if (!canvas || !(canvas instanceof HTMLCanvasElement)) {
+                throw Error(`${canvas} is not an HTMLCanvasElement`);
+            }
+            const self = this;
+            this._canvas = canvas;
+            this._engine = new BABYLON.Engine(this._canvas, true, { preserveDrawingBuffer: true, stencil: true });
+            this._isDebug = factory.isDebug('GuiClient');
+            this._scene = null;
+            window.addEventListener('resize', () => self._engine.resize());
+        }
+        createScene() {
+            if (this._isDebug) {
+                console.log('CREATING SCENE');
+            }
+            if (this._scene) {
+                throw Error('Cannot create scene: already created.');
+            }
+            const scene = new BABYLON.Scene(this._engine);
+            const camera = new BABYLON.FreeCamera('main-camera', new BABYLON.Vector3(0, 5, -10), scene);
+            camera.setTarget(BABYLON.Vector3.Zero());
+            camera.attachControl(this._canvas, false);
+            const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), scene);
+            const sphere = BABYLON.Mesh.CreateSphere('sphere', 16, 2, scene, false, BABYLON.Mesh.FRONTSIDE);
+            sphere.position.y = 1;
+            const ground = BABYLON.Mesh.CreateGround('terrain', 6, 6, 2, scene, false);
+            this._scene = scene;
+            if (this._isDebug) {
+                console.log('SCENE CREATED');
+            }
+        }
+        startRun() {
+            const self = this;
+            const scene = self._scene;
+            if (!scene) {
+                throw Error('Cannot start render-loop: scene is not initialised.');
+            }
+            if (this._renderLoop) {
+                throw Error('Cannot start render-loop: already running.');
+            }
+            this._renderLoop = () => { if (scene == self._scene) {
+                scene.render();
+            } };
+            this._engine.runRenderLoop(this._renderLoop);
+        }
+        stopRun() {
+            var _a;
+            if (this._renderLoop) {
+                if (this._isDebug) {
+                    console.log('STOPPING RENDER');
+                }
+                this._engine.stopRenderLoop(this._renderLoop);
+                this._renderLoop = null;
+                (_a = this._scene) === null || _a === void 0 ? void 0 : _a.dispose();
+                this._scene = null;
+                console.log('RENDER STOPPED');
+            }
+            else {
+                console.log('WARN: render-loop is not running so cannot be stopped.');
             }
         }
     }
@@ -291,29 +329,24 @@ var Hepzi;
 var Hepzi;
 (function (Hepzi) {
     class ApplicationClient extends Hepzi.EventEmitter {
-        constructor(userId, socket, options) {
-            var _a;
-            if (!socket) {
-                throw Error("ApplicationClient requires a web-socket client argument.");
-            }
+        constructor(factory, userId) {
             super();
-            options = options || {};
             this._commandInterpreter = new Hepzi.ClientCommandInterpreter();
-            this._gui = new Hepzi.GuiClient();
-            this._isDebug = (_a = options.isDebug) !== null && _a !== void 0 ? _a : false;
+            this._gui = factory.createGuiClient('canvas');
+            this._isDebug = factory.isDebug('ApplicationClient');
             this._responseParser = new Hepzi.ClientResponseParser();
-            this._socket = socket;
+            this._socket = factory.createWebSocketClient();
             this._userId = userId;
             this._users = {};
             const self = this;
             this._socket.on('open', () => self.onConnecting());
-            this._socket.on('close', () => { self.onClose(); this.emit('close', this); });
-            this._socket.on('error', () => { self.onClose(); this.emit('error', this); });
+            this._socket.on('close', () => { self.onClose(); self.emit('close', self); });
+            this._socket.on('error', () => { self.onClose(); self.emit('error', self); });
             this._socket.on('message', (event) => self.onClientMessageReceived(event));
         }
         connect(sessionId) {
             if (this._isDebug) {
-                console.log(`DEBUG: ApplicationClient connecting.`);
+                console.log('CONNECTING');
             }
             this._socket.connect(this._userId, sessionId);
         }
@@ -322,6 +355,10 @@ var Hepzi;
                 console.log(`DEBUG: ApplicationClient disconnecting if connected.`);
             }
             this._socket.disconnect();
+            if (this._gui) {
+                const gui = this._gui;
+                gui.stopRun();
+            }
         }
         interpretCommand(command) {
             if (command) {
@@ -355,7 +392,8 @@ var Hepzi;
                     this.emit('message', { text: result.message, colour: result.determineTextColourClass() });
                 }
                 if (result.responseType === Hepzi.ClientResponseType.Welcome && result.category !== Hepzi.ClientCategory.Error) {
-                    this._gui.initialise('canvas');
+                    this._gui.createScene();
+                    this._gui.startRun();
                 }
                 if (result.isTerminal) {
                     const self = this;
@@ -371,7 +409,7 @@ var Hepzi;
         }
         onConnecting() {
             if (this._isDebug) {
-                console.log('CONNECTING');
+                console.log('CONNECTED');
             }
             this._users = {};
         }
@@ -561,5 +599,20 @@ var Hepzi;
         }
     }
     Hepzi.WebSocketClient = WebSocketClient;
+})(Hepzi || (Hepzi = {}));
+var Hepzi;
+(function (Hepzi) {
+    class Factory {
+        constructor() {
+            this._debugClasses = {};
+        }
+        createApplicationClient(userId) { return new Hepzi.ApplicationClient(this, userId); }
+        createGuiClient(canvasName) { return new Hepzi.GuiClient(this, canvasName); }
+        createWebSocketClient(options) { return new Hepzi.WebSocketClient(Object.assign(Object.assign({}, options), { isDebug: this.isDebug('WebSocketClient') || (options === null || options === void 0 ? void 0 : options.isDebug) })); }
+        debug(className) { this._debugClasses[className] = true; }
+        isDebug(className) { return !!this._debugClasses[className]; }
+    }
+    Factory.instance = new Factory();
+    Hepzi.Factory = Factory;
 })(Hepzi || (Hepzi = {}));
 //# sourceMappingURL=hepzi.js.map

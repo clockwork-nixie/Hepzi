@@ -2,39 +2,90 @@
 
 namespace Hepzi {
     export class GuiClient {
-        public initialise(canvasName: string) {
-            const canvas = document.getElementById(canvasName);
+        private _canvas: HTMLCanvasElement;
+        private _engine: BABYLON.Engine;
+        private _isDebug: boolean;
+        private _renderLoop: (() => void) | null = null;
+        private _scene: BABYLON.Scene | null;
 
-            if (canvas && canvas instanceof HTMLCanvasElement) {
-                console.log("YAY");
-                var engine = new BABYLON.Engine(canvas as HTMLCanvasElement, true, { preserveDrawingBuffer: true, stencil: true });
 
-                var createScene = function () {
-                    var scene = new BABYLON.Scene(engine);
-                    var camera = new BABYLON.FreeCamera('camera1', new BABYLON.Vector3(0, 5, -10), scene);
+        public constructor(factory: IFactory, canvasName: string) {
+            const canvas = canvasName? document.getElementById(canvasName): null;
 
-                    camera.setTarget(BABYLON.Vector3.Zero());
-                    camera.attachControl(canvas, false);
+            if (!canvas || !(canvas instanceof HTMLCanvasElement)) {
+                throw Error(`${canvas} is not an HTMLCanvasElement`);
+            }
 
-                    var light = new BABYLON.HemisphericLight('light1', new BABYLON.Vector3(0, 1, 0), scene);
-                    var sphere = BABYLON.Mesh.CreateSphere('sphere1', 16, 2, scene, false, BABYLON.Mesh.FRONTSIDE);
+            const self = this;
 
-                    sphere.position.y = 1;
+            this._canvas = canvas;
+            this._engine = new BABYLON.Engine(this._canvas, true, { preserveDrawingBuffer: true, stencil: true });
+            this._isDebug = factory.isDebug('GuiClient');
+            this._scene = null;
 
-                    var ground = BABYLON.Mesh.CreateGround('ground1', 6, 6, 2, scene, false);
+            window.addEventListener('resize', () => self._engine.resize());
+        }
 
-                    return scene;
+
+        public createScene() {
+            if (this._isDebug) {
+                console.log('CREATING SCENE');
+            }
+
+            if (this._scene) {
+                throw Error('Cannot create scene: already created.')
+            }
+            const scene = new BABYLON.Scene(this._engine);
+            const camera = new BABYLON.FreeCamera('main-camera', new BABYLON.Vector3(0, 5, -10), scene);
+
+            camera.setTarget(BABYLON.Vector3.Zero());
+            camera.attachControl(this._canvas, false);
+
+            const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), scene);
+            const sphere = BABYLON.Mesh.CreateSphere('sphere', 16, 2, scene, false, BABYLON.Mesh.FRONTSIDE);
+
+            sphere.position.y = 1;
+
+            const ground = BABYLON.Mesh.CreateGround('terrain', 6, 6, 2, scene, false);
+
+            this._scene = scene;
+
+            if (this._isDebug) {
+                console.log('SCENE CREATED');
+            }
+        }
+
+
+        public startRun() {
+            const self = this;
+            const scene = self._scene;
+
+            if (!scene) {
+                throw Error('Cannot start render-loop: scene is not initialised.');
+            }
+
+            if (this._renderLoop) {
+                throw Error('Cannot start render-loop: already running.');
+            }
+
+            this._renderLoop = () => { if (scene == self._scene) { scene.render() } };
+            this._engine.runRenderLoop(this._renderLoop);
+        }
+        
+
+        public stopRun() {
+            if (this._renderLoop) {
+                if (this._isDebug) {
+                    console.log('STOPPING RENDER');
                 }
+                this._engine.stopRenderLoop(this._renderLoop);
+                this._renderLoop = null;
+                this._scene?.dispose();
+                this._scene = null;
 
-                var scene = createScene();
-
-                engine.runRenderLoop(function () {
-                    scene.render();
-                });
-
-                window.addEventListener('resize', function () {
-                    engine.resize();
-                });
+                console.log('RENDER STOPPED');
+            } else {
+                console.log('WARN: render-loop is not running so cannot be stopped.')
             }
         }
     }

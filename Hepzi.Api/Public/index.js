@@ -1,4 +1,9 @@
 (function (ko) {
+    var factory = Hepzi.Factory.instance;
+
+    factory.debug('ApplicationClient');
+    factory.debug('GuiClient');
+
     ko.options.useOnlyNativeEvents = true;
 
 
@@ -19,10 +24,7 @@
 
 
     function createClient() {
-        var client = applicationModel.client = new Hepzi.ApplicationClient(
-            applicationModel.credentials().userId,
-            new Hepzi.WebSocketClient({ isDebug: true }),
-            { isDebug: true });
+        var client = applicationModel.client = factory.createApplicationClient(applicationModel.credentials().userId);
 
         applicationModel.console([]);
         applicationModel.showConsole(false);

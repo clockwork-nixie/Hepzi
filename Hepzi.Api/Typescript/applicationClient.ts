@@ -8,7 +8,8 @@ namespace Hepzi {
     export type ApplicationClientEventName = 'close' | 'kicked' | 'message';
 
     export interface IApplicationClientOptions {
-        isDebug?: boolean | null;
+        isDebug?: boolean;
+        isDebugGui?: boolean;
     }
 
 
@@ -20,36 +21,31 @@ namespace Hepzi {
         private _socket: WebSocketClient;
         private _userId: number;
         private _users: { [index: number]: string };
-        
+    
 
-        constructor(userId: number, socket: WebSocketClient, options?: IApplicationClientOptions) {
-            if (!socket) {
-                throw Error("ApplicationClient requires a web-socket client argument.")
-            }
+        constructor(factory: IFactory, userId: number) {
             super()
 
-            options = options || {};
-
             this._commandInterpreter = new ClientCommandInterpreter();
-            this._gui = new GuiClient();
-            this._isDebug = options.isDebug ?? false;
+            this._gui = factory.createGuiClient('canvas');
+            this._isDebug = factory.isDebug('ApplicationClient');
             this._responseParser = new ClientResponseParser();
-            this._socket = socket;
+            this._socket = factory.createWebSocketClient();
             this._userId = userId;
             this._users = {};
 
             const self = this;
 
             this._socket.on('open', () => self.onConnecting());
-            this._socket.on('close', () => { self.onClose(); this.emit('close', this); });
-            this._socket.on('error', () => { self.onClose(); this.emit('error', this); });
+            this._socket.on('close', () => { self.onClose(); self.emit('close', self); });
+            this._socket.on('error', () => { self.onClose(); self.emit('error', self); });
             this._socket.on('message', (event: Event) => self.onClientMessageReceived(event));
         }
 
 
         public connect(sessionId: number): void {
             if (this._isDebug) {
-                console.log(`DEBUG: ApplicationClient connecting.`);
+                console.log('CONNECTING');
             }
 
             this._socket.connect(this._userId, sessionId);
@@ -61,6 +57,12 @@ namespace Hepzi {
                 console.log(`DEBUG: ApplicationClient disconnecting if connected.`);
             }
             this._socket.disconnect();
+
+            if (this._gui) {
+                const gui = this._gui;
+
+                gui.stopRun();
+            }
         }
 
 
@@ -106,7 +108,8 @@ namespace Hepzi {
                 }
 
                 if (result.responseType === ClientResponseType.Welcome && result.category !== ClientCategory.Error) {
-                    this._gui.initialise('canvas');
+                    this._gui.createScene();
+                    this._gui.startRun();
                 }
 
                 if (result.isTerminal) {
@@ -128,7 +131,7 @@ namespace Hepzi {
 
         private onConnecting() {
             if (this._isDebug) {
-                console.log('CONNECTING');
+                console.log('CONNECTED');
             }
             this._users = {};
         }
