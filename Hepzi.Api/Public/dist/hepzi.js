@@ -681,4 +681,241 @@ var Hepzi;
     Factory.instance = new Factory();
     Hepzi.Factory = Factory;
 })(Hepzi || (Hepzi = {}));
+var Hepzi;
+(function (Hepzi) {
+    class FreeCameraKeyboardWalkInput {
+        constructor() {
+            this.angularSpeed = 0.1;
+            this.camera = null;
+            this.direction = new BABYLON.Vector3();
+            this._keys = [];
+            this.keysUp = [38];
+            this.keysDown = [40];
+            this.keysLeft = [37];
+            this.keysRight = [39];
+            this._onKeyDown = null;
+            this._onKeyUp = null;
+            this._keys = [];
+            this.keysUp = [38];
+            this.keysDown = [40];
+            this.keysLeft = [37];
+            this.keysRight = [39];
+        }
+        attachControl(noPreventDefault) {
+            var _a;
+            var element = (_a = this.camera) === null || _a === void 0 ? void 0 : _a.getEngine().getInputElement();
+            if (element && !this._onKeyDown) {
+                var self = this;
+                element.tabIndex = 1;
+                this._onKeyDown = function (event) {
+                    if (self.keysUp.indexOf(event.keyCode) !== -1 ||
+                        self.keysDown.indexOf(event.keyCode) !== -1 ||
+                        self.keysLeft.indexOf(event.keyCode) !== -1 ||
+                        self.keysRight.indexOf(event.keyCode) !== -1) {
+                        var index = self._keys.indexOf(event.keyCode);
+                        if (index === -1) {
+                            self._keys.push(event.keyCode);
+                        }
+                        if (!noPreventDefault) {
+                            event.preventDefault();
+                        }
+                    }
+                };
+                this._onKeyUp = function (event) {
+                    if (self.keysUp.indexOf(event.keyCode) !== -1 ||
+                        self.keysDown.indexOf(event.keyCode) !== -1 ||
+                        self.keysLeft.indexOf(event.keyCode) !== -1 ||
+                        self.keysRight.indexOf(event.keyCode) !== -1) {
+                        var index = self._keys.indexOf(event.keyCode);
+                        if (index >= 0) {
+                            self._keys.splice(index, 1);
+                        }
+                        if (!noPreventDefault) {
+                            event.preventDefault();
+                        }
+                    }
+                };
+                element.addEventListener("keydown", this._onKeyDown, false);
+                element.addEventListener("keyup", this._onKeyUp, false);
+            }
+        }
+        checkInputs() {
+            const camera = this.camera;
+            if (camera && this._onKeyDown) {
+                for (var index = 0; index < this._keys.length; index++) {
+                    var keyCode = this._keys[index];
+                    var speed = camera.speed;
+                    if (this.keysLeft.indexOf(keyCode) !== -1) {
+                        camera.rotation.y -= this.angularSpeed;
+                        this.direction.copyFromFloats(0, 0, 0);
+                    }
+                    else if (this.keysUp.indexOf(keyCode) !== -1) {
+                        this.direction.copyFromFloats(0, 0, speed);
+                    }
+                    else if (this.keysRight.indexOf(keyCode) !== -1) {
+                        camera.rotation.y += this.angularSpeed;
+                        this.direction.copyFromFloats(0, 0, 0);
+                    }
+                    else if (this.keysDown.indexOf(keyCode) !== -1) {
+                        this.direction.copyFromFloats(0, 0, -speed);
+                    }
+                    if (camera.getScene().useRightHandedSystem) {
+                        this.direction.z *= -1;
+                    }
+                    camera.getViewMatrix().invertToRef(camera._cameraTransformMatrix);
+                    BABYLON.Vector3.TransformNormalToRef(this.direction, camera._cameraTransformMatrix, camera._transformedDirection);
+                    camera.cameraDirection.addInPlace(camera._transformedDirection);
+                }
+            }
+        }
+        detachControl() {
+            var _a;
+            var element = (_a = this.camera) === null || _a === void 0 ? void 0 : _a.getEngine().getInputElement();
+            if (element && this._onKeyDown && this._onKeyUp) {
+                element.removeEventListener("keydown", this._onKeyDown);
+                element.removeEventListener("keyup", this._onKeyUp);
+                BABYLON.Tools.UnregisterTopRootEvents(window, [
+                    { name: "blur", handler: this._onLostFocus }
+                ]);
+                this._keys = [];
+                this._onKeyDown = null;
+                this._onKeyUp = null;
+            }
+        }
+        getClassName() { return 'FreeCameraKeyboardWalkInput'; }
+        getSimpleName() { return 'keyboard'; }
+        _onLostFocus(_event) { this._keys = []; }
+    }
+    Hepzi.FreeCameraKeyboardWalkInput = FreeCameraKeyboardWalkInput;
+})(Hepzi || (Hepzi = {}));
+var Hepzi;
+(function (Hepzi) {
+    class FreeCameraSearchInput {
+        constructor(touchEnabled) {
+            this.camera = null;
+            this._observer = null;
+            this.previousPosition = null;
+            this._onSearchMove = null;
+            this._pointerInput = null;
+            if (touchEnabled === void 0) {
+                touchEnabled = true;
+            }
+            this.touchEnabled = touchEnabled;
+            this.angularSensibility = 2000.0;
+            this.buttons = [0, 1, 2];
+            this.restrictionX = 100;
+            this.restrictionY = 60;
+        }
+        attachControl(noPreventDefault) {
+            const self = this;
+            const camera = self.camera;
+            const engine = camera === null || camera === void 0 ? void 0 : camera.getEngine();
+            const element = engine === null || engine === void 0 ? void 0 : engine.getInputElement();
+            if (camera && engine && element && !this._pointerInput) {
+                const angle = { x: 0, y: 0 };
+                this._pointerInput = function (pointerInfo, _) {
+                    const type = pointerInfo.type;
+                    const event = pointerInfo.event;
+                    if (!self.touchEnabled && event.pointerType === "touch") {
+                        return;
+                    }
+                    if (type !== BABYLON.PointerEventTypes.POINTERMOVE && self.buttons.indexOf(event.button) === -1) {
+                        return;
+                    }
+                    switch (type) {
+                        case BABYLON.PointerEventTypes.POINTERDOWN:
+                            try {
+                                event.srcElement.setPointerCapture(event.pointerId);
+                            }
+                            catch (_) { }
+                            self.previousPosition = { x: event.clientX, y: event.clientY };
+                            if (!noPreventDefault) {
+                                event.preventDefault();
+                                element.focus();
+                            }
+                            break;
+                        case BABYLON.PointerEventTypes.POINTERUP:
+                            try {
+                                event.srcElement.releasePointerCapture(event.pointerId);
+                            }
+                            catch (_) { }
+                            self.previousPosition = null;
+                            if (!noPreventDefault) {
+                                event.preventDefault();
+                            }
+                            break;
+                        case BABYLON.PointerEventTypes.POINTERMOVE:
+                            if (!self.previousPosition || engine.isPointerLock) {
+                                return;
+                            }
+                            var offsetX = event.clientX - self.previousPosition.x;
+                            var offsetY = event.clientY - self.previousPosition.y;
+                            angle.x += offsetX;
+                            angle.y -= offsetY;
+                            if (Math.abs(angle.x) > self.restrictionX) {
+                                angle.x -= offsetX;
+                            }
+                            if (Math.abs(angle.y) > self.restrictionY) {
+                                angle.y += offsetY;
+                            }
+                            if (camera.getScene().useRightHandedSystem) {
+                                if (Math.abs(angle.x) < self.restrictionX) {
+                                    camera.cameraRotation.y -= offsetX / self.angularSensibility;
+                                }
+                            }
+                            else if (Math.abs(angle.x) < self.restrictionX) {
+                                camera.cameraRotation.y += offsetX / self.angularSensibility;
+                            }
+                            if (Math.abs(angle.y) < self.restrictionY) {
+                                camera.cameraRotation.x += offsetY / self.angularSensibility;
+                            }
+                            self.previousPosition = { x: event.clientX, y: event.clientY };
+                            if (!noPreventDefault) {
+                                event.preventDefault();
+                            }
+                            break;
+                    }
+                };
+                this._onSearchMove = function (event) {
+                    if (!engine.isPointerLock) {
+                        return;
+                    }
+                    var offsetX = event.movementX || event.mozMovementX || event.webkitMovementX || event.msMovementX || 0;
+                    var offsetY = event.movementY || event.mozMovementY || event.webkitMovementY || event.msMovementY || 0;
+                    if (camera.getScene().useRightHandedSystem) {
+                        camera.cameraRotation.y -= offsetX / self.angularSensibility;
+                    }
+                    else {
+                        camera.cameraRotation.y += offsetX / self.angularSensibility;
+                    }
+                    camera.cameraRotation.x += offsetY / self.angularSensibility;
+                    self.previousPosition = null;
+                    if (!noPreventDefault) {
+                        event.preventDefault();
+                    }
+                };
+                this._observer = camera.getScene().onPointerObservable.add(this._pointerInput, BABYLON.PointerEventTypes.POINTERDOWN | BABYLON.PointerEventTypes.POINTERUP | BABYLON.PointerEventTypes.POINTERMOVE);
+                element.addEventListener("mousemove", this._onSearchMove, false);
+            }
+        }
+        checkInputs() {
+        }
+        detachControl() {
+            var _a;
+            const element = (_a = this.camera) === null || _a === void 0 ? void 0 : _a.getEngine().getInputElement();
+            if (element && this.camera && this._observer) {
+                this.camera.getScene().onPointerObservable.remove(this._observer);
+                if (this._onSearchMove) {
+                    element.removeEventListener("mousemove", this._onSearchMove);
+                }
+                this._observer = null;
+                this._onSearchMove = null;
+                this.previousPosition = null;
+            }
+        }
+        getClassName() { return 'FreeCameraSearchInput'; }
+        getSimpleName() { return 'MouseSearchCamera'; }
+    }
+    Hepzi.FreeCameraSearchInput = FreeCameraSearchInput;
+})(Hepzi || (Hepzi = {}));
 //# sourceMappingURL=hepzi.js.map
