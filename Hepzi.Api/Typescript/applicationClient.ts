@@ -14,7 +14,8 @@ namespace Hepzi {
 
 
     export class ApplicationClient extends EventEmitter<ApplicationClientEventName, any> {
-        private _avatars: AvatarLookup;
+        private _avatar: Avatar | null = null;
+        private readonly _avatars: AvatarLookup;
         private _commandInterpreter: ClientCommandInterpreter;
         private _isDebug: boolean;
         private _gui: GuiClient;
@@ -26,13 +27,13 @@ namespace Hepzi {
         constructor(factory: IFactory, userId: number) {
             super()
 
+            this._avatars = {};
             this._commandInterpreter = new ClientCommandInterpreter();
             this._gui = factory.createGuiClient('canvas');
             this._isDebug = factory.isDebug('ApplicationClient');
             this._responseParser = new ClientResponseParser();
             this._socket = factory.createWebSocketClient();
             this._userId = userId;
-            this._avatars = {};
 
             const self = this;
 
@@ -107,10 +108,30 @@ namespace Hepzi {
                     this.emit('message', { text: result.message, colour: result.determineTextColourClass() });
                 }
 
-                if (result.responseType === ClientResponseType.Welcome && result.category !== ClientCategory.Error) {
-                    this._gui.createScene();
-                    this._gui.addAvatar({});
-                    this._gui.startRun();
+                if (result.category !== ClientCategory.Error) {
+                    if (result.avatar != null) {
+                        switch (result.responseType) {
+                            case ClientResponseType.AddInstanceSession:
+                            case ClientResponseType.InitialInstanceSession:
+                                if (this._avatar) {
+                                    this._gui.addAvatar(result.avatar);
+                                } else if (result.avatar.isSelf) {
+                                    this._gui.createScene();
+
+                                    for (const key in this._avatars) {
+                                        const avatar = this._avatars[parseInt(key)];
+                                        this._gui.addAvatar(avatar);
+                                    }
+
+                                    this._gui.startRun();
+                                }
+                                break;
+
+                            case ClientResponseType.RemoveInstanceSession:
+                                this._gui.removeAvatar(result.avatar);
+                                break;
+                        }
+                    }
                 }
 
                 if (result.isTerminal) {
@@ -134,7 +155,7 @@ namespace Hepzi {
             if (this._isDebug) {
                 console.log('CONNECTED');
             }
-            this._avatars = {};
+            Object.keys(this._avatars).forEach(userId => delete this._avatars[parseInt(userId)]);
         }
 
 

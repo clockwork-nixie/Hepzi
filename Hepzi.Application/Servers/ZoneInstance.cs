@@ -15,12 +15,24 @@ namespace Hepzi.Application.Servers
         private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
         private readonly SessionActions _actions = new();
         private readonly object _instanceSessionLock = new();
+        private readonly Random _random = new();
         private readonly ConcurrentDictionary<int, Session<ZoneSessionState>> _roster = new();
+        private readonly Vector3d _spawnPoint = new();
 
 
         public SessionWelcome? AddSession(Session<ZoneSessionState> session, object token)
         {
             ISessionAction actions;
+
+            var state = session.State;
+            
+            state.Position.X = _spawnPoint.X + _random.Next(200) - 100;
+            state.Position.Y = _spawnPoint.Y + _random.Next(200) - 100;
+            state.Position.Z = _spawnPoint.Z + _random.Next(200) - 100;
+            state.Direction.X = _spawnPoint.X - state.Position.X;
+            state.Direction.Y = _spawnPoint.Y - state.Position.Y;
+            state.Direction.Z = _spawnPoint.Z - state.Position.Z;
+
             var initialAction = session.AddInstanceSession();
 
             lock (_instanceSessionLock)
@@ -32,7 +44,7 @@ namespace Hepzi.Application.Servers
                 _actions.AddAction(initialAction);
 
                 var currentAction = _actions.Current;
-                var sessions = _roster.Values.Select(s => (ISession)s).ToArray();
+                var sessions = _roster.Values.ToArray();
 
                 actions = InitialSessionAction.BuildInitialActionChain(session, sessions, currentAction);
                 _roster[session.UserId] = session;

@@ -1,4 +1,5 @@
 ﻿using Hepzi.Application.Helpers;
+using Hepzi.Application.Sessions;
 using Hepzi.Utilities.Interfaces;
 
 namespace Hepzi.Application.Models
@@ -18,7 +19,7 @@ namespace Hepzi.Application.Models
         public int? TargetUserId { get;}
 
 
-        public static ISessionAction BuildInitialActionChain(ISession target, ISession[] sessions, ISessionAction actionChain)
+        public static ISessionAction BuildInitialActionChain(ISession target, Session<ZoneSessionState>[] sessions, ISessionAction actionChain)
         {
             var head = actionChain;
 

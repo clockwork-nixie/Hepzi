@@ -62,7 +62,7 @@ namespace Hepzi {
 
                         case '/who':
                             result = new ClientCommand(ClientRequestType.Unknown);
-                            result.message = [`${command}`].concat(Object.keys(avatars).map(userId => `\u2022 ${avatars[parseInt(userId)]}`));
+                            result.message = [`${command}`].concat(Object.keys(avatars).map(userId => `\u2022 ${avatars[parseInt(userId)]?.name}`));
                             result.log = 'WHO';
                             break;
 

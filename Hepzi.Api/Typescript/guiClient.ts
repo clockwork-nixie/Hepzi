@@ -1,10 +1,18 @@
 ﻿/// <reference path="babylon.module.d.ts"/>
 
 namespace Hepzi {
+    class HepziModel {
+        avatar?: Avatar;
+    }
+
+    interface IModelMesh extends BABYLON.Mesh {
+        hepziModel?: HepziModel | null;
+    }
+
+
     export class GuiClient {
         private _canvas: HTMLCanvasElement;
         private _engine: BABYLON.Engine;
-        private _keysDown: {[index: string]: boolean} = {};
         private _isDebug: boolean;
         private _renderLoop: (() => void) | null = null;
         private _scene: BABYLON.Scene | null;
@@ -30,9 +38,8 @@ namespace Hepzi {
         }
 
 
-        public addAvatar(session: any): any {
+        public addAvatar(avatar: Avatar): void {
             const scene = this._scene;
-            let avatar = null;
 
             if (scene) {
                 const material = new BABYLON.StandardMaterial('material', scene);
@@ -40,13 +47,21 @@ namespace Hepzi {
                 material.alpha = 1;
                 material.diffuseColor = new BABYLON.Color3(1.0, 0.2, 0.7);
 
-                const sphere = BABYLON.Mesh.CreateSphere('sphere', 16, 2, scene, false, BABYLON.Mesh.FRONTSIDE);
+                const sphere = BABYLON.Mesh.CreateSphere(`avatar:${avatar.name}`, 16, 2, scene, false, BABYLON.Mesh.FRONTSIDE);
 
-                sphere.position.y = 1;
+                sphere.position = avatar.position;
                 sphere.material = material;
-            }
 
-            return avatar;
+                ((sphere as IModelMesh).hepziModel = new HepziModel()).avatar = avatar;
+                avatar.mesh = sphere;
+
+                if (avatar.isSelf) {
+                    const camera = new BABYLON.FreeCamera('main-camera', avatar.position, scene);
+
+                    camera.setTarget(avatar.direction);
+                    camera.attachControl(this._canvas, false);
+                }
+            }
         }
 
 
@@ -77,25 +92,22 @@ namespace Hepzi {
                 if (self._scene === scene) {
                     switch (pointerInfo.type) {
                         case BABYLON.PointerEventTypes.POINTERDOWN:
-                            console.log("POINTER DOWN");
-                            break;
                         case BABYLON.PointerEventTypes.POINTERUP:
-                            console.log("POINTER UP");
-                            break;
                         case BABYLON.PointerEventTypes.POINTERMOVE:
-                            //console.log("POINTER MOVE");
-                            break;
                         case BABYLON.PointerEventTypes.POINTERWHEEL:
-                            console.log("POINTER WHEEL");
                             break;
+
                         case BABYLON.PointerEventTypes.POINTERPICK:
                             console.log("POINTER PICK");
+                            const avatar = (pointerInfo.pickInfo?.pickedMesh as IModelMesh)?.hepziModel?.avatar;
+
+                            if (avatar) {
+                                console.log(`Picked: ${avatar.name}`);
+                            }
                             break;
+
                         case BABYLON.PointerEventTypes.POINTERTAP:
-                            console.log("POINTER TAP");
-                            break;
                         case BABYLON.PointerEventTypes.POINTERDOUBLETAP:
-                            console.log("POINTER DOUBLE-TAP");
                             break;
                     }
                 }
@@ -112,11 +124,6 @@ namespace Hepzi {
                 throw Error('Cannot create scene: already created.')
             }
             const scene = new BABYLON.Scene(this._engine);
-            const camera = new BABYLON.FreeCamera('main-camera', new BABYLON.Vector3(0, 5, -10), scene);
-
-            camera.setTarget(BABYLON.Vector3.Zero());
-            camera.attachControl(this._canvas, false);
-
             const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), scene);
             const ground = BABYLON.Mesh.CreateGround('terrain', 6, 6, 2, scene, false);
 
@@ -132,6 +139,18 @@ namespace Hepzi {
 
         private onMouseLeave(): void {
             console.log('MouseLeave');
+        }
+
+
+        public removeAvatar(avatar: Avatar): void {
+            const model = (avatar.mesh as IModelMesh)?.hepziModel;
+
+            if (this._scene && model) {
+                (avatar.mesh as IModelMesh).hepziModel = null;
+                avatar.mesh?.dispose();
+            }
+
+            avatar.mesh = null;
         }
 
 

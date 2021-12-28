@@ -30,6 +30,16 @@ namespace Hepzi {
         }
 
 
+        private parseAvatar(sessionUserId: number, buffer: ArrayBufferWrapper, ): Avatar {
+            const userId = buffer.getInteger();
+            const position = buffer.getVector3d();
+            const direction = buffer.getVector3d();
+            const name = buffer.getString();
+
+            return new Avatar(name, userId === sessionUserId, userId, position, direction);
+        }
+
+
         private parseBinaryResponse(userId: number, buffer: ArrayBufferWrapper, avatars: AvatarLookup): ClientResponse {
             let result: ClientResponse;
 
@@ -53,16 +63,17 @@ namespace Hepzi {
                         break;
 
                     case ClientResponseType.InitialInstanceSession:
-                        result.userId = buffer.getInteger();
-                        result.avatar = avatars[result.userId] = new Avatar(buffer.getString(), result.userId);
+                        result.avatar = this.parseAvatar(userId, buffer);
+                        result.userId = result.avatar.userId;
+                        avatars[result.userId] = result.avatar;
                         result.log = `INITIAL USER: #${result.userId} => ${result.avatar.name}`;
                         result.message = `${result.avatar.name} is here.`;
-
                         break;
 
                     case ClientResponseType.AddInstanceSession:
-                        result.userId = buffer.getInteger();
-                        result.avatar = avatars[result.userId] = new Avatar(buffer.getString(), result.userId);
+                        result.avatar = this.parseAvatar(userId, buffer);
+                        result.userId = result.avatar.userId;
+                        avatars[result.userId] = result.avatar;
                         result.log = `ADD USER: #${result.userId} => ${result.avatar.name}`;
                         result.message = result.userId == userId ? 'You have joined the area.' : `${result.avatar.name} has joined the area.`;
                         result.category = ClientCategory.Important;
@@ -70,7 +81,8 @@ namespace Hepzi {
 
                     case ClientResponseType.RemoveInstanceSession:
                         result.userId = buffer.getInteger();
-                        const avatarName = avatars[result.userId]?.name || `User#${result.userId}`
+                        result.avatar = avatars[result.userId];
+                        const avatarName = result.avatar?.name || `User#${result.userId}`
                         result.log = `REMOVE USER: #${result.userId}`;
                         result.message = `${avatarName} has left the area.`;
                         result.category = ClientCategory.Important;

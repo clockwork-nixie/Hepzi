@@ -30,6 +30,12 @@ var Hepzi;
             return ArrayBufferWrapper._decoder
                 .decode(this._buffer.slice(this._position, length ? this._position + length : length));
         }
+        getVector3d() {
+            const x = this.getInteger();
+            const y = this.getInteger();
+            const z = this.getInteger();
+            return new BABYLON.Vector3(x, y, z);
+        }
         position() { return this._position; }
         ;
         putByte(value) {
@@ -109,7 +115,7 @@ var Hepzi;
                             break;
                         case '/who':
                             result = new Hepzi.ClientCommand(Hepzi.ClientRequestType.Unknown);
-                            result.message = [`${command}`].concat(Object.keys(avatars).map(userId => `\u2022 ${avatars[parseInt(userId)]}`));
+                            result.message = [`${command}`].concat(Object.keys(avatars).map(userId => { var _a; return `\u2022 ${(_a = avatars[parseInt(userId)]) === null || _a === void 0 ? void 0 : _a.name}`; }));
                             result.log = 'WHO';
                             break;
                         default:
@@ -169,6 +175,13 @@ var Hepzi;
             }
             return result;
         }
+        parseAvatar(sessionUserId, buffer) {
+            const userId = buffer.getInteger();
+            const position = buffer.getVector3d();
+            const direction = buffer.getVector3d();
+            const name = buffer.getString();
+            return new Hepzi.Avatar(name, userId === sessionUserId, userId, position, direction);
+        }
         parseBinaryResponse(userId, buffer, avatars) {
             var _a;
             let result;
@@ -190,21 +203,24 @@ var Hepzi;
                         result.category = Hepzi.ClientCategory.Debug;
                         break;
                     case Hepzi.ClientResponseType.InitialInstanceSession:
-                        result.userId = buffer.getInteger();
-                        result.avatar = avatars[result.userId] = new Hepzi.Avatar(buffer.getString(), result.userId);
+                        result.avatar = this.parseAvatar(userId, buffer);
+                        result.userId = result.avatar.userId;
+                        avatars[result.userId] = result.avatar;
                         result.log = `INITIAL USER: #${result.userId} => ${result.avatar.name}`;
                         result.message = `${result.avatar.name} is here.`;
                         break;
                     case Hepzi.ClientResponseType.AddInstanceSession:
-                        result.userId = buffer.getInteger();
-                        result.avatar = avatars[result.userId] = new Hepzi.Avatar(buffer.getString(), result.userId);
+                        result.avatar = this.parseAvatar(userId, buffer);
+                        result.userId = result.avatar.userId;
+                        avatars[result.userId] = result.avatar;
                         result.log = `ADD USER: #${result.userId} => ${result.avatar.name}`;
                         result.message = result.userId == userId ? 'You have joined the area.' : `${result.avatar.name} has joined the area.`;
                         result.category = Hepzi.ClientCategory.Important;
                         break;
                     case Hepzi.ClientResponseType.RemoveInstanceSession:
                         result.userId = buffer.getInteger();
-                        const avatarName = ((_a = avatars[result.userId]) === null || _a === void 0 ? void 0 : _a.name) || `User#${result.userId}`;
+                        result.avatar = avatars[result.userId];
+                        const avatarName = ((_a = result.avatar) === null || _a === void 0 ? void 0 : _a.name) || `User#${result.userId}`;
                         result.log = `REMOVE USER: #${result.userId}`;
                         result.message = `${avatarName} has left the area.`;
                         result.category = Hepzi.ClientCategory.Important;
@@ -256,9 +272,10 @@ var Hepzi;
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
+    class HepziModel {
+    }
     class GuiClient {
         constructor(factory, canvasName) {
-            this._keysDown = {};
             this._renderLoop = null;
             const canvas = canvasName ? document.getElementById(canvasName) : null;
             if (!canvas || !(canvas instanceof HTMLCanvasElement)) {
@@ -273,18 +290,23 @@ var Hepzi;
             canvas.addEventListener('mouseenter', () => canvas.focus());
             window.addEventListener('resize', () => self._engine.resize());
         }
-        addAvatar(session) {
+        addAvatar(avatar) {
             const scene = this._scene;
-            let avatar = null;
             if (scene) {
                 const material = new BABYLON.StandardMaterial('material', scene);
                 material.alpha = 1;
                 material.diffuseColor = new BABYLON.Color3(1.0, 0.2, 0.7);
-                const sphere = BABYLON.Mesh.CreateSphere('sphere', 16, 2, scene, false, BABYLON.Mesh.FRONTSIDE);
-                sphere.position.y = 1;
+                const sphere = BABYLON.Mesh.CreateSphere(`avatar:${avatar.name}`, 16, 2, scene, false, BABYLON.Mesh.FRONTSIDE);
+                sphere.position = avatar.position;
                 sphere.material = material;
+                (sphere.hepziModel = new HepziModel()).avatar = avatar;
+                avatar.mesh = sphere;
+                if (avatar.isSelf) {
+                    const camera = new BABYLON.FreeCamera('main-camera', avatar.position, scene);
+                    camera.setTarget(avatar.direction);
+                    camera.attachControl(this._canvas, false);
+                }
             }
-            return avatar;
         }
         addKeyboardHandler() {
             const self = this;
@@ -306,27 +328,23 @@ var Hepzi;
             const self = this;
             const scene = this._scene;
             scene === null || scene === void 0 ? void 0 : scene.onPointerObservable.add((pointerInfo) => {
+                var _a, _b, _c;
                 if (self._scene === scene) {
                     switch (pointerInfo.type) {
                         case BABYLON.PointerEventTypes.POINTERDOWN:
-                            console.log("POINTER DOWN");
-                            break;
                         case BABYLON.PointerEventTypes.POINTERUP:
-                            console.log("POINTER UP");
-                            break;
                         case BABYLON.PointerEventTypes.POINTERMOVE:
-                            break;
                         case BABYLON.PointerEventTypes.POINTERWHEEL:
-                            console.log("POINTER WHEEL");
                             break;
                         case BABYLON.PointerEventTypes.POINTERPICK:
                             console.log("POINTER PICK");
+                            const avatar = (_c = (_b = (_a = pointerInfo.pickInfo) === null || _a === void 0 ? void 0 : _a.pickedMesh) === null || _b === void 0 ? void 0 : _b.hepziModel) === null || _c === void 0 ? void 0 : _c.avatar;
+                            if (avatar) {
+                                console.log(`Picked: ${avatar.name}`);
+                            }
                             break;
                         case BABYLON.PointerEventTypes.POINTERTAP:
-                            console.log("POINTER TAP");
-                            break;
                         case BABYLON.PointerEventTypes.POINTERDOUBLETAP:
-                            console.log("POINTER DOUBLE-TAP");
                             break;
                     }
                 }
@@ -340,9 +358,6 @@ var Hepzi;
                 throw Error('Cannot create scene: already created.');
             }
             const scene = new BABYLON.Scene(this._engine);
-            const camera = new BABYLON.FreeCamera('main-camera', new BABYLON.Vector3(0, 5, -10), scene);
-            camera.setTarget(BABYLON.Vector3.Zero());
-            camera.attachControl(this._canvas, false);
             const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), scene);
             const ground = BABYLON.Mesh.CreateGround('terrain', 6, 6, 2, scene, false);
             this._scene = scene;
@@ -354,6 +369,15 @@ var Hepzi;
         }
         onMouseLeave() {
             console.log('MouseLeave');
+        }
+        removeAvatar(avatar) {
+            var _a, _b;
+            const model = (_a = avatar.mesh) === null || _a === void 0 ? void 0 : _a.hepziModel;
+            if (this._scene && model) {
+                avatar.mesh.hepziModel = null;
+                (_b = avatar.mesh) === null || _b === void 0 ? void 0 : _b.dispose();
+            }
+            avatar.mesh = null;
         }
         startRun() {
             const self = this;
@@ -393,13 +417,14 @@ var Hepzi;
     class ApplicationClient extends Hepzi.EventEmitter {
         constructor(factory, userId) {
             super();
+            this._avatar = null;
+            this._avatars = {};
             this._commandInterpreter = new Hepzi.ClientCommandInterpreter();
             this._gui = factory.createGuiClient('canvas');
             this._isDebug = factory.isDebug('ApplicationClient');
             this._responseParser = new Hepzi.ClientResponseParser();
             this._socket = factory.createWebSocketClient();
             this._userId = userId;
-            this._avatars = {};
             const self = this;
             this._socket.on('open', () => self.onConnecting());
             this._socket.on('close', () => { self.onClose(); self.emit('close', self); });
@@ -453,10 +478,28 @@ var Hepzi;
                     result.category !== Hepzi.ClientCategory.Error))) {
                     this.emit('message', { text: result.message, colour: result.determineTextColourClass() });
                 }
-                if (result.responseType === Hepzi.ClientResponseType.Welcome && result.category !== Hepzi.ClientCategory.Error) {
-                    this._gui.createScene();
-                    this._gui.addAvatar({});
-                    this._gui.startRun();
+                if (result.category !== Hepzi.ClientCategory.Error) {
+                    if (result.avatar != null) {
+                        switch (result.responseType) {
+                            case Hepzi.ClientResponseType.AddInstanceSession:
+                            case Hepzi.ClientResponseType.InitialInstanceSession:
+                                if (this._avatar) {
+                                    this._gui.addAvatar(result.avatar);
+                                }
+                                else if (result.avatar.isSelf) {
+                                    this._gui.createScene();
+                                    for (const key in this._avatars) {
+                                        const avatar = this._avatars[parseInt(key)];
+                                        this._gui.addAvatar(avatar);
+                                    }
+                                    this._gui.startRun();
+                                }
+                                break;
+                            case Hepzi.ClientResponseType.RemoveInstanceSession:
+                                this._gui.removeAvatar(result.avatar);
+                                break;
+                        }
+                    }
                 }
                 if (result.isTerminal) {
                     const self = this;
@@ -474,7 +517,7 @@ var Hepzi;
             if (this._isDebug) {
                 console.log('CONNECTED');
             }
-            this._avatars = {};
+            Object.keys(this._avatars).forEach(userId => delete this._avatars[parseInt(userId)]);
         }
         send(buffer) {
             if (this._isDebug) {
@@ -488,8 +531,12 @@ var Hepzi;
 var Hepzi;
 (function (Hepzi) {
     class Avatar {
-        constructor(username, userId) {
+        constructor(username, isSelf, userId, position, direction) {
+            this.direction = direction;
+            this.isSelf = isSelf;
             this.name = username;
+            this.mesh = null;
+            this.position = position;
             this.userId = userId;
         }
     }

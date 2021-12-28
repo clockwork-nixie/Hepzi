@@ -49,6 +49,15 @@
         }
 
 
+        getVector3d() {
+            const x = this.getInteger();
+            const y = this.getInteger();
+            const z = this.getInteger();
+
+            return new BABYLON.Vector3(x, y, z);
+        }
+
+
         public readonly length: number;
 
 
