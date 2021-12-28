@@ -29,6 +29,16 @@ namespace Hepzi.Utilities.Helpers
         }
 
 
+        public Vector3d ReadVector3d()
+        {
+            var x = ReadInt();
+            var y = ReadInt();
+            var z = ReadInt();
+
+            return new Vector3d(x, y, z);
+        }
+
+
         public BufferWrapper Skip(int count = 1)
         {
             _position += count;

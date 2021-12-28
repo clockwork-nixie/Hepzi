@@ -61,7 +61,7 @@ namespace Hepzi.Application.Servers
         public TimeSpan ConnectionTimeout => TimeSpan.FromSeconds(20); // TODO: settings
 
 
-        public bool ProcessClientRequest(ISession session, ArraySegment<byte> data, object token)
+        public bool ProcessClientRequest(Session<ZoneSessionState> session, ArraySegment<byte> data, object token)
         {
             var result = false;
 
@@ -86,6 +86,16 @@ namespace Hepzi.Application.Servers
 
                             case ClientRequestType.KickClient:
                                 _actions.AddAction(session.KickClient(), buffer.ReadInt(), true);
+                                break;
+
+                            case ClientRequestType.MoveClient:
+                                var position = buffer.ReadVector3d();
+                                var direction = buffer.ReadVector3d();
+                                
+                                session.State.Position = position;
+                                session.State.Direction = direction;
+
+                                _actions.AddAction(session.MoveClient());
                                 break;
 
                             default:

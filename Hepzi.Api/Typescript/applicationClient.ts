@@ -1,8 +1,8 @@
 ﻿/// <reference path="arrayBufferWrapper.ts" />
+/// <reference path="clientCommandBuilder.ts" />
 /// <reference path="clientCommandInterpreter.ts" />
 /// <reference path="clientResponseParser.ts" />
 /// <reference path="eventEmitter.ts" />
-/// <reference path="guiClient.ts" />
 
 namespace Hepzi {
     export type ApplicationClientEventName = 'close' | 'kicked' | 'message';
@@ -21,8 +21,9 @@ namespace Hepzi {
         private _gui: GuiClient;
         private _responseParser: ClientResponseParser;
         private _socket: WebSocketClient;
+        private _updateTimerHandle: number | null = null;
         private _userId: number;
-    
+            
 
         constructor(factory: IFactory, userId: number) {
             super()
@@ -57,12 +58,11 @@ namespace Hepzi {
             if (this._isDebug) {
                 console.log(`DEBUG: ApplicationClient disconnecting if connected.`);
             }
+            this._avatar = null;
             this._socket.disconnect();
-
+            
             if (this._gui) {
-                const gui = this._gui;
-
-                gui.stopRun();
+                this._gui.stopRun();
             }
         }
 
@@ -123,6 +123,14 @@ namespace Hepzi {
                                         this._gui.addAvatar(avatar);
                                     }
 
+                                    if (this._updateTimerHandle) {
+                                        window.clearInterval(this._updateTimerHandle);
+                                        this._updateTimerHandle = null;
+                                    }
+                                    const self = this;
+
+                                    this._avatar = result.avatar;
+                                    this._updateTimerHandle = window.setInterval(() => self.onUpdateTimer(), 50);
                                     this._gui.startRun();
                                 }
                                 break;
@@ -165,6 +173,13 @@ namespace Hepzi {
             }
 
             this._socket.send(buffer);
+        }
+
+
+        onUpdateTimer() {
+            if (this._socket && this._avatar) {
+                this.send(ClientCommandBuilder.MoveClient(this._avatar));
+            }
         }
     }
 }

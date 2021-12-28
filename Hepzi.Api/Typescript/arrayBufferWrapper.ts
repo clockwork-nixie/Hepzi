@@ -91,5 +91,12 @@
             this._buffer.set(data, 0);
             this._position += data?.length;
         }
+
+
+        putVector3d(vector: BABYLON.Vector3) {
+            this.putInteger(vector.x);
+            this.putInteger(vector.y);
+            this.putInteger(vector.z);
+        }
     }
 }

@@ -67,5 +67,19 @@ namespace Hepzi.Application.Helpers
 
             return buffer;
         }
+
+
+        public static byte[] MoveClient(this Session<ZoneSessionState> session)
+        {
+            var buffer = new byte[1 + sizeof(int) * 7];
+            var writer = new BufferWrapper(buffer);
+
+            writer.Write((byte)ClientResponseType.MoveClient);
+            writer.WriteInt(session.UserId);
+            writer.WriteVector3d(session.State.Position);
+            writer.WriteVector3d(session.State.Direction);
+
+            return buffer;
+        }
     }
 }

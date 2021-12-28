@@ -15,6 +15,11 @@
         /// <summary>
         /// Terminate a client in the current instance.
         /// </summary>
-        KickClient = 0x2
+        KickClient = 0x2,
+
+        /// <summary>
+        /// Update client position and direction
+        /// </summary>
+        MoveClient = 0x3
     }
 }

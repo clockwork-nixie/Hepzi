@@ -1,7 +1,6 @@
 (function (ko) {
     var factory = Hepzi.Factory.instance;
 
-    factory.debug('ApplicationClient');
     factory.debug('GuiClient');
 
     ko.options.useOnlyNativeEvents = true;

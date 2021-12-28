@@ -1,4 +1,5 @@
 ﻿/// <reference path="arrayBufferWrapper.ts" />
+/// <reference path="clientCommandBuilder.ts" />
 
 namespace Hepzi {
     export class ClientCommandInterpreter {

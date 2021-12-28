@@ -103,6 +103,32 @@ namespace Hepzi {
                         result.isTerminal = true;
                         break;
 
+                    case ClientResponseType.MoveClient:
+                        result.userId = buffer.getInteger();
+                        const position = buffer.getVector3d();
+                        const direction = buffer.getVector3d();
+                        const avatar = result.avatar = avatars[result.userId];
+
+                        if (avatar) {
+                            if (!avatar.isSelf) {
+                                avatar.position.x = position.x;
+                                avatar.position.y = position.y;
+                                avatar.position.z = position.z;
+                                avatar.direction.x = direction.x;
+                                avatar.direction.y = direction.y;
+                                avatar.direction.z = direction.z;
+                                result.log = `MOVE USER: #${result.userId} (${position.x}, ${position.y}, ${position.z})`;
+                                result.category = ClientCategory.Debug;
+                            } else {
+                                result.log = `MOVE SELF NO-OP: (${position.x}, ${position.y}, ${position.z})`;
+                                result.category = ClientCategory.Debug;
+                            }
+                        } else {
+                            result.log = `MOVE USER: cannot find user #${result.userId}`;
+                            result.category = ClientCategory.Error;
+                        }
+                        break;
+
                     default:
                         const hex = buffer.getHex();
                         result.log = `UNKNOWN RESPONSE TYPE: ${result.responseType} => ${hex}`;
