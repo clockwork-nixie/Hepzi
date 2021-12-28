@@ -60,7 +60,7 @@ var Hepzi;
 var Hepzi;
 (function (Hepzi) {
     class ClientCommandInterpreter {
-        interpretCommand(userId, request, users) {
+        interpretCommand(userId, request, avatars) {
             let result;
             try {
                 const words = request.split(' ').filter(s => s ? s : null);
@@ -75,23 +75,23 @@ var Hepzi;
                         case '/kick':
                             result = new Hepzi.ClientCommand(Hepzi.ClientRequestType.KickClient);
                             if (words.length < 2) {
-                                result.message = `Syntax should be: ${command} <username>`;
+                                result.message = `Syntax should be: ${command} <name>`;
                                 result.category = Hepzi.ClientCategory.Error;
                             }
                             else {
-                                const username = words[1];
-                                const targetUserId = this.getUserIdByUsername(username, users);
-                                if (targetUserId) {
+                                const name = words[1];
+                                const targetAvatar = this.getUserIdByAvatarName(name, avatars);
+                                if (targetAvatar) {
                                     const buffer = new ArrayBuffer(5);
                                     const writer = new Hepzi.ArrayBufferWrapper(buffer);
                                     writer.putByte(result.command);
-                                    writer.putInteger(targetUserId);
+                                    writer.putInteger(targetAvatar);
                                     result.buffer = buffer;
                                     result.log = `SEND KICK #${userId}`;
-                                    result.message = `${command} ${username}`;
+                                    result.message = `${command} ${name}`;
                                 }
                                 else {
-                                    result.message = `Cannot kick unknown user: ${username}`;
+                                    result.message = `Cannot kick unknown user: ${name}`;
                                     result.category = Hepzi.ClientCategory.Error;
                                 }
                             }
@@ -109,7 +109,7 @@ var Hepzi;
                             break;
                         case '/who':
                             result = new Hepzi.ClientCommand(Hepzi.ClientRequestType.Unknown);
-                            result.message = [`${command}`].concat(Object.keys(users).map(userId => `\u2022 ${users[parseInt(userId)]}`));
+                            result.message = [`${command}`].concat(Object.keys(avatars).map(userId => `\u2022 ${avatars[parseInt(userId)]}`));
                             result.log = 'WHO';
                             break;
                         default:
@@ -132,9 +132,9 @@ var Hepzi;
             }
             return result;
         }
-        getUserIdByUsername(username, users) {
-            username = username.toLowerCase();
-            return parseInt(Object.keys(users).filter(userId => { var _a; return ((_a = users[parseInt(userId)]) === null || _a === void 0 ? void 0 : _a.toLowerCase()) == username; })[0]) || null;
+        getUserIdByAvatarName(name, avatars) {
+            name = name.toLowerCase();
+            return parseInt(Object.keys(avatars).filter(userId => { var _a; return ((_a = avatars[parseInt(userId)]) === null || _a === void 0 ? void 0 : _a.name.toLowerCase()) == name; })[0]) || null;
         }
     }
     Hepzi.ClientCommandInterpreter = ClientCommandInterpreter;
@@ -142,11 +142,11 @@ var Hepzi;
 var Hepzi;
 (function (Hepzi) {
     class ClientResponseParser {
-        parseResponse(userId, response, users) {
+        parseResponse(userId, response, avatars) {
             let result;
             try {
                 if (response instanceof ArrayBuffer) {
-                    result = this.parseBinaryResponse(userId, new Hepzi.ArrayBufferWrapper(response), users);
+                    result = this.parseBinaryResponse(userId, new Hepzi.ArrayBufferWrapper(response), avatars);
                 }
                 else if (typeof response === 'string' || response instanceof String) {
                     result = new Hepzi.ClientResponse(Hepzi.ClientResponseType.InstanceMessage);
@@ -169,7 +169,8 @@ var Hepzi;
             }
             return result;
         }
-        parseBinaryResponse(userId, buffer, users) {
+        parseBinaryResponse(userId, buffer, avatars) {
+            var _a;
             let result;
             if (buffer.length <= 0) {
                 result = new Hepzi.ClientResponse(Hepzi.ClientResponseType.Unknown);
@@ -190,28 +191,24 @@ var Hepzi;
                         break;
                     case Hepzi.ClientResponseType.InitialInstanceSession:
                         result.userId = buffer.getInteger();
-                        result.username = buffer.getString();
-                        result.log = `INITIAL USER: #${result.userId} => ${result.username}`;
-                        result.message = `${result.username} is already here.`;
-                        users[result.userId] = result.username;
+                        result.avatar = avatars[result.userId] = new Hepzi.Avatar(buffer.getString(), result.userId);
+                        result.log = `INITIAL USER: #${result.userId} => ${result.avatar.name}`;
+                        result.message = `${result.avatar.name} is here.`;
                         break;
                     case Hepzi.ClientResponseType.AddInstanceSession:
                         result.userId = buffer.getInteger();
-                        result.username = buffer.getString();
-                        result.log = `ADD USER: #${result.userId} => ${result.username}`;
-                        result.message = result.userId == userId ?
-                            `You have joined the area.` :
-                            `${result.username} has joined the area.`;
+                        result.avatar = avatars[result.userId] = new Hepzi.Avatar(buffer.getString(), result.userId);
+                        result.log = `ADD USER: #${result.userId} => ${result.avatar.name}`;
+                        result.message = result.userId == userId ? 'You have joined the area.' : `${result.avatar.name} has joined the area.`;
                         result.category = Hepzi.ClientCategory.Important;
-                        users[result.userId] = result.username;
                         break;
                     case Hepzi.ClientResponseType.RemoveInstanceSession:
                         result.userId = buffer.getInteger();
-                        result.username = users[result.userId] || `User#${result.userId}`;
+                        const avatarName = ((_a = avatars[result.userId]) === null || _a === void 0 ? void 0 : _a.name) || `User#${result.userId}`;
                         result.log = `REMOVE USER: #${result.userId}`;
-                        result.message = `${result.username} has left the area.`;
+                        result.message = `${avatarName} has left the area.`;
                         result.category = Hepzi.ClientCategory.Important;
-                        delete users[result.userId];
+                        delete avatars[result.userId];
                         break;
                     case Hepzi.ClientResponseType.InstanceMessage:
                         const text = buffer.getString();
@@ -402,7 +399,7 @@ var Hepzi;
             this._responseParser = new Hepzi.ClientResponseParser();
             this._socket = factory.createWebSocketClient();
             this._userId = userId;
-            this._users = {};
+            this._avatars = {};
             const self = this;
             this._socket.on('open', () => self.onConnecting());
             this._socket.on('close', () => { self.onClose(); self.emit('close', self); });
@@ -427,7 +424,7 @@ var Hepzi;
         }
         interpretCommand(command) {
             if (command) {
-                const result = this._commandInterpreter.interpretCommand(this._userId, command, this._users);
+                const result = this._commandInterpreter.interpretCommand(this._userId, command, this._avatars);
                 if (result.log && this._isDebug) {
                     console.log(result.log);
                 }
@@ -448,7 +445,7 @@ var Hepzi;
         }
         onClientMessageReceived(event) {
             if (event && event.data) {
-                const result = this._responseParser.parseResponse(this._userId, event.data, this._users);
+                const result = this._responseParser.parseResponse(this._userId, event.data, this._avatars);
                 if (result.log && this._isDebug) {
                     console.log(result.log);
                 }
@@ -477,7 +474,7 @@ var Hepzi;
             if (this._isDebug) {
                 console.log('CONNECTED');
             }
-            this._users = {};
+            this._avatars = {};
         }
         send(buffer) {
             if (this._isDebug) {
@@ -487,6 +484,16 @@ var Hepzi;
         }
     }
     Hepzi.ApplicationClient = ApplicationClient;
+})(Hepzi || (Hepzi = {}));
+var Hepzi;
+(function (Hepzi) {
+    class Avatar {
+        constructor(username, userId) {
+            this.name = username;
+            this.userId = userId;
+        }
+    }
+    Hepzi.Avatar = Avatar;
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {

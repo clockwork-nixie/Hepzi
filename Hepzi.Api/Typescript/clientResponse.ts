@@ -1,12 +1,13 @@
 ﻿namespace Hepzi {
     export class ClientResponse {
+        public avatar?: Avatar;
         public category: ClientCategory;
+        public isTerminal?: boolean = false;
         public log?: string;
         public message?: string;
         public readonly responseType: ClientResponseType;
         public userId?: number;
-        public username?: string;
-        isTerminal?: boolean = false;
+        
 
         constructor(responseType: ClientResponseType) {
             this.responseType = responseType;

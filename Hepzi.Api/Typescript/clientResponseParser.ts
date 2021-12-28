@@ -2,12 +2,12 @@
 
 namespace Hepzi {
     export class ClientResponseParser {
-        public parseResponse(userId: number, response: any, users: { [index: number]: string }): ClientResponse {
+        public parseResponse(userId: number, response: any, avatars: AvatarLookup): ClientResponse {
             let result: ClientResponse;
 
             try {
                 if (response instanceof ArrayBuffer) {
-                    result = this.parseBinaryResponse(userId, new ArrayBufferWrapper(response as ArrayBuffer), users);
+                    result = this.parseBinaryResponse(userId, new ArrayBufferWrapper(response as ArrayBuffer), avatars);
                 } else if (typeof response === 'string' || response instanceof String) {
                     result = new ClientResponse(ClientResponseType.InstanceMessage);
                     result.log = `SYSTEM MESSAGE: ${response}`;
@@ -30,7 +30,7 @@ namespace Hepzi {
         }
 
 
-        private parseBinaryResponse(userId: number, buffer: ArrayBufferWrapper, users: { [index: number]: string }): ClientResponse {
+        private parseBinaryResponse(userId: number, buffer: ArrayBufferWrapper, avatars: AvatarLookup): ClientResponse {
             let result: ClientResponse;
 
             if (buffer.length <= 0) {
@@ -54,30 +54,27 @@ namespace Hepzi {
 
                     case ClientResponseType.InitialInstanceSession:
                         result.userId = buffer.getInteger();
-                        result.username = buffer.getString();
-                        result.log = `INITIAL USER: #${result.userId} => ${result.username}`;
-                        result.message = `${result.username} is already here.`;
-                        users[result.userId] = result.username;
+                        result.avatar = avatars[result.userId] = new Avatar(buffer.getString(), result.userId);
+                        result.log = `INITIAL USER: #${result.userId} => ${result.avatar.name}`;
+                        result.message = `${result.avatar.name} is here.`;
+
                         break;
 
                     case ClientResponseType.AddInstanceSession:
                         result.userId = buffer.getInteger();
-                        result.username = buffer.getString();
-                        result.log = `ADD USER: #${result.userId} => ${result.username}`;
-                        result.message = result.userId == userId ?
-                            `You have joined the area.`:
-                            `${result.username} has joined the area.`;
+                        result.avatar = avatars[result.userId] = new Avatar(buffer.getString(), result.userId);
+                        result.log = `ADD USER: #${result.userId} => ${result.avatar.name}`;
+                        result.message = result.userId == userId ? 'You have joined the area.' : `${result.avatar.name} has joined the area.`;
                         result.category = ClientCategory.Important;
-                        users[result.userId] = result.username;
                         break;
 
                     case ClientResponseType.RemoveInstanceSession:
                         result.userId = buffer.getInteger();
-                        result.username = users[result.userId] || `User#${result.userId}`
+                        const avatarName = avatars[result.userId]?.name || `User#${result.userId}`
                         result.log = `REMOVE USER: #${result.userId}`;
-                        result.message = `${result.username} has left the area.`;
+                        result.message = `${avatarName} has left the area.`;
                         result.category = ClientCategory.Important;
-                        delete users[result.userId];
+                        delete avatars[result.userId];
                         break;
 
                     case ClientResponseType.InstanceMessage:

@@ -14,13 +14,13 @@ namespace Hepzi {
 
 
     export class ApplicationClient extends EventEmitter<ApplicationClientEventName, any> {
+        private _avatars: AvatarLookup;
         private _commandInterpreter: ClientCommandInterpreter;
         private _isDebug: boolean;
         private _gui: GuiClient;
         private _responseParser: ClientResponseParser;
         private _socket: WebSocketClient;
         private _userId: number;
-        private _users: { [index: number]: string };
     
 
         constructor(factory: IFactory, userId: number) {
@@ -32,7 +32,7 @@ namespace Hepzi {
             this._responseParser = new ClientResponseParser();
             this._socket = factory.createWebSocketClient();
             this._userId = userId;
-            this._users = {};
+            this._avatars = {};
 
             const self = this;
 
@@ -68,7 +68,7 @@ namespace Hepzi {
 
         public interpretCommand(command: string): void {
             if (command) {
-                const result = this._commandInterpreter.interpretCommand(this._userId, command, this._users);
+                const result = this._commandInterpreter.interpretCommand(this._userId, command, this._avatars);
 
                 if (result.log && this._isDebug) {
                     console.log(result.log);
@@ -95,7 +95,7 @@ namespace Hepzi {
 
         private onClientMessageReceived(event: any) {
             if (event && event.data) {
-                const result = this._responseParser.parseResponse(this._userId, event.data, this._users);
+                const result = this._responseParser.parseResponse(this._userId, event.data, this._avatars);
 
                 if (result.log && this._isDebug) {
                     console.log(result.log);
@@ -134,7 +134,7 @@ namespace Hepzi {
             if (this._isDebug) {
                 console.log('CONNECTED');
             }
-            this._users = {};
+            this._avatars = {};
         }
 
 

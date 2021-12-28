@@ -2,7 +2,7 @@
 
 namespace Hepzi {
     export class ClientCommandInterpreter {
-        public interpretCommand(userId: number, request: string, users: { [index: number]: string }): ClientCommand {
+        public interpretCommand(userId: number, request: string, avatars: AvatarLookup): ClientCommand {
             let result: ClientCommand;
 
             try {
@@ -22,24 +22,24 @@ namespace Hepzi {
                             result = new ClientCommand(ClientRequestType.KickClient);
 
                             if (words.length < 2) {
-                                result.message = `Syntax should be: ${command} <username>`;
+                                result.message = `Syntax should be: ${command} <name>`;
                                 result.category = ClientCategory.Error;
                             } else {
-                                const username = words[1];
-                                const targetUserId = this.getUserIdByUsername(username, users);
+                                const name = words[1];
+                                const targetAvatar = this.getUserIdByAvatarName(name, avatars);
 
-                                if (targetUserId) {
+                                if (targetAvatar) {
                                     const buffer = new ArrayBuffer(5);
                                     const writer = new Hepzi.ArrayBufferWrapper(buffer);
 
                                     writer.putByte(result.command);
-                                    writer.putInteger(targetUserId);
+                                    writer.putInteger(targetAvatar);
 
                                     result.buffer = buffer;
                                     result.log = `SEND KICK #${userId}`;
-                                    result.message = `${command} ${username}`;
+                                    result.message = `${command} ${name}`;
                                 } else {
-                                    result.message = `Cannot kick unknown user: ${username}`;
+                                    result.message = `Cannot kick unknown user: ${name}`;
                                     result.category = ClientCategory.Error;
                                 }
                             }
@@ -62,7 +62,7 @@ namespace Hepzi {
 
                         case '/who':
                             result = new ClientCommand(ClientRequestType.Unknown);
-                            result.message = [`${command}`].concat(Object.keys(users).map(userId => `\u2022 ${users[parseInt(userId)]}`));
+                            result.message = [`${command}`].concat(Object.keys(avatars).map(userId => `\u2022 ${avatars[parseInt(userId)]}`));
                             result.log = 'WHO';
                             break;
 
@@ -87,10 +87,10 @@ namespace Hepzi {
         }
 
 
-        private getUserIdByUsername(username: string, users: { [index: number]: string }): (number | null) {
-            username = username.toLowerCase();
+        private getUserIdByAvatarName(name: string, avatars: AvatarLookup): (number | null) {
+            name = name.toLowerCase();
 
-            return parseInt(Object.keys(users).filter(userId => users[parseInt(userId)]?.toLowerCase() == username)[0]) || null;
+            return parseInt(Object.keys(avatars).filter(userId => avatars[parseInt(userId)]?.name.toLowerCase() == name)[0]) || null;
         }
     }
 }
