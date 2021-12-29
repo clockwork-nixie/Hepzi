@@ -130,7 +130,7 @@ namespace Hepzi {
                                     const self = this;
 
                                     this._avatar = result.avatar;
-                                    this._updateTimerHandle = window.setInterval(() => self.onUpdateTimer(), 50);
+                                    this._updateTimerHandle = window.setInterval(() => self.onUpdateTimer(), 10);
                                     this._gui.startRun();
                                 }
                                 break;
@@ -178,7 +178,10 @@ namespace Hepzi {
 
         onUpdateTimer() {
             if (this._socket && this._avatar) {
-                this.send(ClientCommandBuilder.MoveClient(this._avatar));
+                if (this._avatar.hasPositionOrDirectionChanged()) {
+                    this._avatar.updateLastPositionAndDirection();
+                    this.send(ClientCommandBuilder.MoveClient(this._avatar));
+                }
             }
         }
     }

@@ -49,10 +49,10 @@
         }
 
 
-        getVector3d() {
-            const x = this.getInteger();
-            const y = this.getInteger();
-            const z = this.getInteger();
+        getVector3d(scale: number = 1) {
+            const x = this.getInteger() / scale;
+            const y = this.getInteger() / scale;
+            const z = this.getInteger() / scale;
 
             return new BABYLON.Vector3(x, y, z);
         }
@@ -93,10 +93,10 @@
         }
 
 
-        putVector3d(vector: BABYLON.Vector3) {
-            this.putInteger(vector.x);
-            this.putInteger(vector.y);
-            this.putInteger(vector.z);
+        putVector3d(vector: BABYLON.Vector3, scale: number = 1) {
+            this.putInteger(vector.x * scale);
+            this.putInteger(vector.y * scale);
+            this.putInteger(vector.z * scale);
         }
     }
 }

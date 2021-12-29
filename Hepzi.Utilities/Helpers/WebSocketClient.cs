@@ -18,11 +18,13 @@ namespace Hepzi.Utilities.Helpers
         {
             public ThreadState(SessionWelcome welcome)
             {
+                ActionsReady = welcome.Session.ActionsReady;
                 Cancellation = welcome.Session.Cancellation;
                 Outbounds = welcome.GetActions();
                 UserId = welcome.Session.UserId;
             }
 
+            public AutoResetEvent ActionsReady { get; }
             public CancellationToken Cancellation { get; }
             public ISessionAction Outbounds { get; }
             public int UserId { get; }
@@ -244,10 +246,10 @@ namespace Hepzi.Utilities.Helpers
                 {
                     var outbounds = state.Outbounds;
                     var cancellation = state.Cancellation;
+                    var waitHandles = new[] { cancellation.WaitHandle, state.ActionsReady };
 
                     while (!cancellation.IsCancellationRequested && _socket.State == WebSocketState.Open)
                     {
-                        // TODO: rework to optimise traffic.
                         while (outbounds.Next != null)
                         {
                             outbounds = outbounds.Next;
@@ -266,7 +268,7 @@ namespace Hepzi.Utilities.Helpers
                             }
                         }
 
-                        Thread.Sleep(50);
+                        WaitHandle.WaitAny(waitHandles);
                     }
                 }
                 catch (OperationCanceledException)

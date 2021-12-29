@@ -13,11 +13,18 @@ namespace Hepzi.Application.Servers
     public class ZoneInstance : IZoneInstance
     {
         private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
-        private readonly SessionActions _actions = new();
+        private readonly SessionActions _actions;
         private readonly object _instanceSessionLock = new();
         private readonly Random _random = new();
         private readonly ConcurrentDictionary<int, Session<ZoneSessionState>> _roster = new();
         private readonly Vector3d _spawnPoint = new();
+
+
+        public ZoneInstance()
+        {
+            _actions = new(() => _roster.Values);
+            _actions.StartWorker();
+        }
 
 
         public SessionWelcome? AddSession(Session<ZoneSessionState> session, object token)
@@ -59,6 +66,9 @@ namespace Hepzi.Application.Servers
 
 
         public TimeSpan ConnectionTimeout => TimeSpan.FromSeconds(20); // TODO: settings
+
+
+        public void Dispose() => _actions.Dispose();
 
 
         public bool ProcessClientRequest(Session<ZoneSessionState> session, ArraySegment<byte> data, object token)

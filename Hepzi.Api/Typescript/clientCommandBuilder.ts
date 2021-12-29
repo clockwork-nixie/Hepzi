@@ -5,8 +5,8 @@
             const writer = new Hepzi.ArrayBufferWrapper(buffer);
 
             writer.putByte(ClientRequestType.MoveClient);
-            writer.putVector3d(avatar.position);
-            writer.putVector3d(avatar.direction);
+            writer.putVector3d(avatar.position, 100);
+            writer.putVector3d(avatar.direction, 100);
 
             return buffer;
         }

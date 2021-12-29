@@ -32,8 +32,8 @@ namespace Hepzi {
 
         private parseAvatar(sessionUserId: number, buffer: ArrayBufferWrapper, ): Avatar {
             const userId = buffer.getInteger();
-            const position = buffer.getVector3d();
-            const direction = buffer.getVector3d();
+            const position = buffer.getVector3d(100);
+            const direction = buffer.getVector3d(100);
             const name = buffer.getString();
 
             return new Avatar(name, userId === sessionUserId, userId, position, direction);
@@ -75,7 +75,7 @@ namespace Hepzi {
                         result.userId = result.avatar.userId;
                         avatars[result.userId] = result.avatar;
                         result.log = `ADD USER: #${result.userId} => ${result.avatar.name}`;
-                        result.message = result.userId == userId ? 'You have joined the area.' : `${result.avatar.name} has joined the area.`;
+                        result.message = result.userId === userId ? 'You have joined the area.' : `${result.avatar.name} has joined the area.`;
                         result.category = ClientCategory.Important;
                         break;
 
@@ -84,7 +84,7 @@ namespace Hepzi {
                         result.avatar = avatars[result.userId];
                         const avatarName = result.avatar?.name || `User#${result.userId}`
                         result.log = `REMOVE USER: #${result.userId}`;
-                        result.message = `${avatarName} has left the area.`;
+                        result.message = result.userId !== userId ? `${avatarName} has left the area.`: '';
                         result.category = ClientCategory.Important;
                         delete avatars[result.userId];
                         break;
@@ -105,18 +105,14 @@ namespace Hepzi {
 
                     case ClientResponseType.MoveClient:
                         result.userId = buffer.getInteger();
-                        const position = buffer.getVector3d();
-                        const direction = buffer.getVector3d();
+                        const position = buffer.getVector3d(100);
+                        const direction = buffer.getVector3d(100);
                         const avatar = result.avatar = avatars[result.userId];
 
                         if (avatar) {
                             if (!avatar.isSelf) {
-                                avatar.position.x = position.x;
-                                avatar.position.y = position.y;
-                                avatar.position.z = position.z;
-                                avatar.direction.x = direction.x;
-                                avatar.direction.y = direction.y;
-                                avatar.direction.z = direction.z;
+                                avatar.position.copyFrom(position);
+                                avatar.direction.copyFrom(direction);
                                 result.log = `MOVE USER: #${result.userId} (${position.x}, ${position.y}, ${position.z})`;
                                 result.category = ClientCategory.Debug;
                             } else {

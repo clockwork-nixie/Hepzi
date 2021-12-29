@@ -30,10 +30,10 @@ var Hepzi;
             return ArrayBufferWrapper._decoder
                 .decode(this._buffer.slice(this._position, length ? this._position + length : length));
         }
-        getVector3d() {
-            const x = this.getInteger();
-            const y = this.getInteger();
-            const z = this.getInteger();
+        getVector3d(scale = 1) {
+            const x = this.getInteger() / scale;
+            const y = this.getInteger() / scale;
+            const z = this.getInteger() / scale;
             return new BABYLON.Vector3(x, y, z);
         }
         position() { return this._position; }
@@ -58,10 +58,10 @@ var Hepzi;
             this._buffer.set(data, 0);
             this._position += data === null || data === void 0 ? void 0 : data.length;
         }
-        putVector3d(vector) {
-            this.putInteger(vector.x);
-            this.putInteger(vector.y);
-            this.putInteger(vector.z);
+        putVector3d(vector, scale = 1) {
+            this.putInteger(vector.x * scale);
+            this.putInteger(vector.y * scale);
+            this.putInteger(vector.z * scale);
         }
     }
     ArrayBufferWrapper._decoder = new TextDecoder();
@@ -75,8 +75,8 @@ var Hepzi;
             const buffer = new ArrayBuffer(25);
             const writer = new Hepzi.ArrayBufferWrapper(buffer);
             writer.putByte(Hepzi.ClientRequestType.MoveClient);
-            writer.putVector3d(avatar.position);
-            writer.putVector3d(avatar.direction);
+            writer.putVector3d(avatar.position, 100);
+            writer.putVector3d(avatar.direction, 100);
             return buffer;
         }
     }
@@ -196,8 +196,8 @@ var Hepzi;
         }
         parseAvatar(sessionUserId, buffer) {
             const userId = buffer.getInteger();
-            const position = buffer.getVector3d();
-            const direction = buffer.getVector3d();
+            const position = buffer.getVector3d(100);
+            const direction = buffer.getVector3d(100);
             const name = buffer.getString();
             return new Hepzi.Avatar(name, userId === sessionUserId, userId, position, direction);
         }
@@ -233,7 +233,7 @@ var Hepzi;
                         result.userId = result.avatar.userId;
                         avatars[result.userId] = result.avatar;
                         result.log = `ADD USER: #${result.userId} => ${result.avatar.name}`;
-                        result.message = result.userId == userId ? 'You have joined the area.' : `${result.avatar.name} has joined the area.`;
+                        result.message = result.userId === userId ? 'You have joined the area.' : `${result.avatar.name} has joined the area.`;
                         result.category = Hepzi.ClientCategory.Important;
                         break;
                     case Hepzi.ClientResponseType.RemoveInstanceSession:
@@ -241,7 +241,7 @@ var Hepzi;
                         result.avatar = avatars[result.userId];
                         const avatarName = ((_a = result.avatar) === null || _a === void 0 ? void 0 : _a.name) || `User#${result.userId}`;
                         result.log = `REMOVE USER: #${result.userId}`;
-                        result.message = `${avatarName} has left the area.`;
+                        result.message = result.userId !== userId ? `${avatarName} has left the area.` : '';
                         result.category = Hepzi.ClientCategory.Important;
                         delete avatars[result.userId];
                         break;
@@ -259,17 +259,13 @@ var Hepzi;
                         break;
                     case Hepzi.ClientResponseType.MoveClient:
                         result.userId = buffer.getInteger();
-                        const position = buffer.getVector3d();
-                        const direction = buffer.getVector3d();
+                        const position = buffer.getVector3d(100);
+                        const direction = buffer.getVector3d(100);
                         const avatar = result.avatar = avatars[result.userId];
                         if (avatar) {
                             if (!avatar.isSelf) {
-                                avatar.position.x = position.x;
-                                avatar.position.y = position.y;
-                                avatar.position.z = position.z;
-                                avatar.direction.x = direction.x;
-                                avatar.direction.y = direction.y;
-                                avatar.direction.z = direction.z;
+                                avatar.position.copyFrom(position);
+                                avatar.direction.copyFrom(direction);
                                 result.log = `MOVE USER: #${result.userId} (${position.x}, ${position.y}, ${position.z})`;
                                 result.category = Hepzi.ClientCategory.Debug;
                             }
@@ -402,7 +398,7 @@ var Hepzi;
                                     }
                                     const self = this;
                                     this._avatar = result.avatar;
-                                    this._updateTimerHandle = window.setInterval(() => self.onUpdateTimer(), 50);
+                                    this._updateTimerHandle = window.setInterval(() => self.onUpdateTimer(), 10);
                                     this._gui.startRun();
                                 }
                                 break;
@@ -438,7 +434,10 @@ var Hepzi;
         }
         onUpdateTimer() {
             if (this._socket && this._avatar) {
-                this.send(Hepzi.ClientCommandBuilder.MoveClient(this._avatar));
+                if (this._avatar.hasPositionOrDirectionChanged()) {
+                    this._avatar.updateLastPositionAndDirection();
+                    this.send(Hepzi.ClientCommandBuilder.MoveClient(this._avatar));
+                }
             }
         }
     }
@@ -454,6 +453,15 @@ var Hepzi;
             this.mesh = null;
             this.position = position;
             this.userId = userId;
+            this._lastDirection = new BABYLON.Vector3();
+            this._lastPosition = new BABYLON.Vector3();
+        }
+        hasPositionOrDirectionChanged() {
+            return !(this._lastDirection.equals(this.direction) && this._lastPosition.equals(this.position));
+        }
+        updateLastPositionAndDirection() {
+            this._lastDirection.copyFrom(this.direction);
+            this._lastPosition.copyFrom(this.position);
         }
     }
     Hepzi.Avatar = Avatar;
@@ -465,9 +473,8 @@ var Hepzi;
         ClientCategory[ClientCategory["Debug"] = 0] = "Debug";
         ClientCategory[ClientCategory["Normal"] = 1] = "Normal";
         ClientCategory[ClientCategory["Important"] = 2] = "Important";
-        ClientCategory[ClientCategory["Urgent"] = 3] = "Urgent";
-        ClientCategory[ClientCategory["System"] = 4] = "System";
-        ClientCategory[ClientCategory["Error"] = 5] = "Error";
+        ClientCategory[ClientCategory["System"] = 3] = "System";
+        ClientCategory[ClientCategory["Error"] = 4] = "Error";
     })(ClientCategory = Hepzi.ClientCategory || (Hepzi.ClientCategory = {}));
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
