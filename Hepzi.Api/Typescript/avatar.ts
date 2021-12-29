@@ -1,4 +1,4 @@
-﻿namespace Hepzi {
+namespace Hepzi {
     export class Avatar {
         private readonly _lastDirection: BABYLON.Vector3;
         private readonly _lastPosition: BABYLON.Vector3;
@@ -9,6 +9,7 @@
             this.name = username;
             this.mesh = null;
             this.position = position;
+            this.updateRotation = () => { }
             this.userId = userId;
 
             this._lastDirection = new BABYLON.Vector3();
@@ -18,8 +19,9 @@
         public readonly isSelf: boolean;
         public mesh: BABYLON.Mesh | null;
         public readonly name: string;
-        direction: BABYLON.Vector3;
-        position: BABYLON.Vector3;
+        public direction: BABYLON.Vector3;
+        public position: BABYLON.Vector3;
+        public updateRotation: () => void;
         public readonly userId: number;
 
 

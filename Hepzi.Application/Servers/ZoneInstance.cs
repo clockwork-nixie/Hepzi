@@ -33,12 +33,10 @@ namespace Hepzi.Application.Servers
 
             var state = session.State;
             
-            state.Position.X = _spawnPoint.X + _random.Next(200) - 100;
-            state.Position.Y = _spawnPoint.Y + _random.Next(200) - 100;
-            state.Position.Z = _spawnPoint.Z + _random.Next(200) - 100;
-            state.Direction.X = _spawnPoint.X - state.Position.X;
-            state.Direction.Y = _spawnPoint.Y - state.Position.Y;
-            state.Direction.Z = _spawnPoint.Z - state.Position.Z;
+            state.Position = _spawnPoint + new Vector3d(_random.Next(200) - 100, _random.Next(100), _random.Next(200) - 100);
+            state.Direction = _spawnPoint.IsZero? new(1, 0 , 0): -_spawnPoint;
+
+            state.Direction.Normalise(100);
 
             var initialAction = session.AddInstanceSession();
 
@@ -77,7 +75,7 @@ namespace Hepzi.Application.Servers
 
             if (session.HasToken(token))
             {
-                if (data.Count == 0)
+                if (data.Count == 0)    
                 {
                     _actions.AddAction(session.Heartbeat(), session.UserId);
                 }

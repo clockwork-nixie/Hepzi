@@ -113,6 +113,7 @@ namespace Hepzi {
                             if (!avatar.isSelf) {
                                 avatar.position.copyFrom(position);
                                 avatar.direction.copyFrom(direction);
+                                avatar.updateRotation();
                                 result.log = `MOVE USER: #${result.userId} (${position.x}, ${position.y}, ${position.z})`;
                                 result.category = ClientCategory.Debug;
                             } else {

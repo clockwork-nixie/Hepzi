@@ -266,6 +266,7 @@ var Hepzi;
                             if (!avatar.isSelf) {
                                 avatar.position.copyFrom(position);
                                 avatar.direction.copyFrom(direction);
+                                avatar.updateRotation();
                                 result.log = `MOVE USER: #${result.userId} (${position.x}, ${position.y}, ${position.z})`;
                                 result.category = Hepzi.ClientCategory.Debug;
                             }
@@ -452,6 +453,7 @@ var Hepzi;
             this.name = username;
             this.mesh = null;
             this.position = position;
+            this.updateRotation = () => { };
             this.userId = userId;
             this._lastDirection = new BABYLON.Vector3();
             this._lastPosition = new BABYLON.Vector3();
@@ -569,15 +571,22 @@ var Hepzi;
                 const material = new BABYLON.StandardMaterial('material', scene);
                 material.alpha = 1;
                 material.diffuseColor = new BABYLON.Color3(1.0, 0.2, 0.7);
-                const sphere = BABYLON.Mesh.CreateSphere(`avatar:${avatar.name}`, 16, 2, scene, false, BABYLON.Mesh.FRONTSIDE);
-                sphere.position = avatar.position;
-                sphere.material = material;
-                (sphere.hepziModel = new HepziModel()).avatar = avatar;
-                avatar.mesh = sphere;
+                const mesh = BABYLON.Mesh.CreateHemisphere(`avatar:${avatar.name}`, 16, 2, scene);
+                mesh.position = avatar.position;
+                mesh.material = material;
+                (mesh.hepziModel = new HepziModel()).avatar = avatar;
+                avatar.mesh = mesh;
+                var self = this;
+                avatar.updateRotation = () => self.setRotation(avatar);
+                avatar.updateRotation();
                 if (avatar.isSelf) {
                     const camera = new BABYLON.FreeCamera('main-camera', avatar.position, scene);
-                    camera.setTarget(avatar.direction);
+                    if (avatar.mesh.rotationQuaternion) {
+                        camera.rotationQuaternion = avatar.mesh.rotationQuaternion;
+                    }
                     camera.attachControl(this._canvas, false);
+                    this._avatar = avatar;
+                    this._camera = camera;
                 }
             }
         }
@@ -606,8 +615,14 @@ var Hepzi;
                     switch (pointerInfo.type) {
                         case BABYLON.PointerEventTypes.POINTERDOWN:
                         case BABYLON.PointerEventTypes.POINTERUP:
-                        case BABYLON.PointerEventTypes.POINTERMOVE:
                         case BABYLON.PointerEventTypes.POINTERWHEEL:
+                            break;
+                        case BABYLON.PointerEventTypes.POINTERMOVE:
+                            if (this._avatar && this._camera && this._camera.rotationQuaternion) {
+                                const quaternion = this._camera.rotationQuaternion;
+                                const unitVector = new BABYLON.Vector3(1, 0, 0);
+                                unitVector.rotateByQuaternionToRef(quaternion, this._avatar.direction);
+                            }
                             break;
                         case BABYLON.PointerEventTypes.POINTERPICK:
                             console.log("POINTER PICK");
@@ -652,6 +667,15 @@ var Hepzi;
             }
             avatar.mesh = null;
         }
+        setRotation(avatar) {
+            if (avatar.mesh) {
+                if (!(avatar.direction.x || avatar.direction.y || avatar.direction.z)) {
+                    avatar.direction.x = 1;
+                }
+                const rotationQuaternion = BABYLON.Quaternion.FromEulerVector(avatar.direction.normalize());
+                avatar.mesh.rotationQuaternion = rotationQuaternion;
+            }
+        }
         startRun() {
             const self = this;
             const scene = self._scene;
@@ -676,6 +700,8 @@ var Hepzi;
                 this._renderLoop = null;
                 (_a = this._scene) === null || _a === void 0 ? void 0 : _a.dispose();
                 this._scene = null;
+                this._avatar = null;
+                this._camera = null;
                 console.log('RENDER STOPPED');
             }
             else {

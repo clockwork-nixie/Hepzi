@@ -135,7 +135,7 @@ namespace Hepzi {
                                 }
                                 break;
 
-                            case ClientResponseType.RemoveInstanceSession:
+                                case ClientResponseType.RemoveInstanceSession:
                                 this._gui.removeAvatar(result.avatar);
                                 break;
                         }
