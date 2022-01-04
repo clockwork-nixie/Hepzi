@@ -23,15 +23,14 @@
 
 
     function createClient() {
-        var client = applicationModel.client = factory.createApplicationClient(applicationModel.credentials().userId);
-
         applicationModel.console([]);
         applicationModel.showConsole(false);
 
-        applicationModel.client.on('close', () => { if (applicationModel.client == client) { applicationModel.logout(); }});
-        applicationModel.client.on('kicked', () => { if (applicationModel.client == client) { applicationModel.logout(); }});
-        applicationModel.client.on('message', data => { if (applicationModel.client == client) { addConsoleLine(data); }});
-        applicationModel.client.connect(applicationModel.credentials().sessionId);
+        var client = applicationModel.client = factory.createApplicationClient(applicationModel.credentials().userId);
+
+        client.on('close', () => { if (applicationModel.client == client) { applicationModel.logout(); }});
+        client.on('message', data => { if (applicationModel.client == client) { addConsoleLine(data); }});
+        client.connect(applicationModel.credentials().sessionId);
     }
 
 

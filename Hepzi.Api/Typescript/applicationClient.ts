@@ -1,11 +1,17 @@
-﻿/// <reference path="arrayBufferWrapper.ts" />
-/// <reference path="clientCommandBuilder.ts" />
-/// <reference path="clientCommandInterpreter.ts" />
-/// <reference path="clientResponseParser.ts" />
-/// <reference path="eventEmitter.ts" />
+﻿/// <reference path="avatar.ts" />
+/// <reference path="comms/clientCategory.ts" />
+/// <reference path="comms/clientCommandBuilder.ts" />
+/// <reference path="comms/clientCommandInterpreter.ts" />
+/// <reference path="comms/clientRequestType.ts" />
+/// <reference path="comms/clientResponseParser.ts" />
+/// <reference path="comms/clientResponseType.ts" />
+/// <reference path="comms/webSocketClient.ts" />
+/// <reference path="gui/guiClient.ts" />
+/// <reference path="utilities/arrayBufferWrapper.ts" />
+/// <reference path="utilities/eventEmitter.ts" />
 
 namespace Hepzi {
-    export type ApplicationClientEventName = 'close' | 'kicked' | 'message';
+    export type ApplicationClientEventName = 'close' | 'console' | 'error' | 'message';
 
     export interface IApplicationClientOptions {
         isDebug?: boolean;
@@ -22,25 +28,26 @@ namespace Hepzi {
         private _responseParser: ClientResponseParser;
         private _socket: WebSocketClient;
         private _updateTimerHandle: number | null = null;
-        private _userId: number;
+        private readonly _userId: number;
             
 
         constructor(factory: IFactory, userId: number) {
             super()
 
             this._avatars = {};
-            this._commandInterpreter = new ClientCommandInterpreter();
+            this._userId = userId;
+
+            this._commandInterpreter = factory.createClientCommandInterpreter();
             this._gui = factory.createGuiClient('canvas');
             this._isDebug = factory.isDebug('ApplicationClient');
-            this._responseParser = new ClientResponseParser();
+            this._responseParser = factory.createClientResponseParser();
             this._socket = factory.createWebSocketClient();
-            this._userId = userId;
 
             const self = this;
 
             this._socket.on('open', () => self.onConnecting());
-            this._socket.on('close', () => { self.onClose(); self.emit('close', self); });
-            this._socket.on('error', () => { self.onClose(); self.emit('error', self); });
+            this._socket.on('close', () => self.emit('close', self));
+            this._socket.on('error', () => self.emit('error', self));
             this._socket.on('message', (event: Event) => self.onClientMessageReceived(event));
         }
 
@@ -135,7 +142,7 @@ namespace Hepzi {
                                 }
                                 break;
 
-                                case ClientResponseType.RemoveInstanceSession:
+                            case ClientResponseType.RemoveInstanceSession:
                                 this._gui.removeAvatar(result.avatar);
                                 break;
                         }
@@ -146,15 +153,8 @@ namespace Hepzi {
                     const self = this;
 
                     this.disconnect();
-                    window.setTimeout(() => self.emit('kicked', null), 2500);
+                    window.setTimeout(() => self.emit('close', null), 2500);
                 }
-            }
-        }
-
-
-        private onClose() {
-            if (this._isDebug) {
-                console.log('CLOSING');
             }
         }
 
@@ -169,14 +169,13 @@ namespace Hepzi {
 
         public send(buffer: ArrayBuffer) {
             if (this._isDebug) {
-                console.log(`DEBUG: ApplicationClient sending array-buffer of size ${new ArrayBufferWrapper(buffer).length}`);
+                console.log(`SEND array-buffer of size ${new ArrayBufferWrapper(buffer).length}`);
             }
-
             this._socket.send(buffer);
         }
 
 
-        onUpdateTimer() {
+        private onUpdateTimer() {
             if (this._socket && this._avatar) {
                 if (this._avatar.hasPositionOrDirectionChanged()) {
                     this._avatar.updateLastPositionAndDirection();

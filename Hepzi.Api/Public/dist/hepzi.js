@@ -1,6 +1,42 @@
 "use strict";
 var Hepzi;
 (function (Hepzi) {
+    class Avatar {
+        constructor(username, isSelf, userId, position, direction) {
+            this.direction = direction;
+            this.isSelf = isSelf;
+            this.name = username;
+            this.mesh = null;
+            this.position = position;
+            this.updateRotation = () => { };
+            this.userId = userId;
+            this._lastDirection = new BABYLON.Vector3();
+            this._lastPosition = new BABYLON.Vector3();
+        }
+        hasPositionOrDirectionChanged() {
+            return !(this._lastDirection.equals(this.direction) &&
+                this._lastPosition.equals(this.position));
+        }
+        updateLastPositionAndDirection() {
+            this._lastDirection.copyFrom(this.direction);
+            this._lastPosition.copyFrom(this.position);
+        }
+    }
+    Hepzi.Avatar = Avatar;
+})(Hepzi || (Hepzi = {}));
+var Hepzi;
+(function (Hepzi) {
+    let ClientCategory;
+    (function (ClientCategory) {
+        ClientCategory[ClientCategory["Debug"] = 0] = "Debug";
+        ClientCategory[ClientCategory["Normal"] = 1] = "Normal";
+        ClientCategory[ClientCategory["Important"] = 2] = "Important";
+        ClientCategory[ClientCategory["System"] = 3] = "System";
+        ClientCategory[ClientCategory["Error"] = 4] = "Error";
+    })(ClientCategory = Hepzi.ClientCategory || (Hepzi.ClientCategory = {}));
+})(Hepzi || (Hepzi = {}));
+var Hepzi;
+(function (Hepzi) {
     class ArrayBufferWrapper {
         constructor(buffer) {
             this._buffer = new Uint8Array(buffer);
@@ -67,6 +103,16 @@ var Hepzi;
     ArrayBufferWrapper._decoder = new TextDecoder();
     ArrayBufferWrapper._encoder = new TextEncoder();
     Hepzi.ArrayBufferWrapper = ArrayBufferWrapper;
+})(Hepzi || (Hepzi = {}));
+var Hepzi;
+(function (Hepzi) {
+    let ClientRequestType;
+    (function (ClientRequestType) {
+        ClientRequestType[ClientRequestType["Unknown"] = 0] = "Unknown";
+        ClientRequestType[ClientRequestType["InstanceMessage"] = 1] = "InstanceMessage";
+        ClientRequestType[ClientRequestType["KickClient"] = 2] = "KickClient";
+        ClientRequestType[ClientRequestType["MoveClient"] = 3] = "MoveClient";
+    })(ClientRequestType = Hepzi.ClientRequestType || (Hepzi.ClientRequestType = {}));
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
@@ -163,6 +209,21 @@ var Hepzi;
         }
     }
     Hepzi.ClientCommandInterpreter = ClientCommandInterpreter;
+})(Hepzi || (Hepzi = {}));
+var Hepzi;
+(function (Hepzi) {
+    let ClientResponseType;
+    (function (ClientResponseType) {
+        ClientResponseType[ClientResponseType["Unknown"] = 0] = "Unknown";
+        ClientResponseType[ClientResponseType["Welcome"] = 1] = "Welcome";
+        ClientResponseType[ClientResponseType["Heartbeat"] = 2] = "Heartbeat";
+        ClientResponseType[ClientResponseType["InitialInstanceSession"] = 3] = "InitialInstanceSession";
+        ClientResponseType[ClientResponseType["AddInstanceSession"] = 4] = "AddInstanceSession";
+        ClientResponseType[ClientResponseType["RemoveInstanceSession"] = 5] = "RemoveInstanceSession";
+        ClientResponseType[ClientResponseType["InstanceMessage"] = 6] = "InstanceMessage";
+        ClientResponseType[ClientResponseType["KickClient"] = 7] = "KickClient";
+        ClientResponseType[ClientResponseType["MoveClient"] = 8] = "MoveClient";
+    })(ClientResponseType = Hepzi.ClientResponseType || (Hepzi.ClientResponseType = {}));
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
@@ -314,236 +375,105 @@ var Hepzi;
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
-    class ApplicationClient extends Hepzi.EventEmitter {
-        constructor(factory, userId) {
+    class WebSocketClient extends Hepzi.EventEmitter {
+        constructor(options) {
+            options = options || {};
             super();
-            this._avatar = null;
-            this._updateTimerHandle = null;
-            this._avatars = {};
-            this._commandInterpreter = new Hepzi.ClientCommandInterpreter();
-            this._gui = factory.createGuiClient('canvas');
-            this._isDebug = factory.isDebug('ApplicationClient');
-            this._responseParser = new Hepzi.ClientResponseParser();
-            this._socket = factory.createWebSocketClient();
-            this._userId = userId;
-            const self = this;
-            this._socket.on('open', () => self.onConnecting());
-            this._socket.on('close', () => { self.onClose(); self.emit('close', self); });
-            this._socket.on('error', () => { self.onClose(); self.emit('error', self); });
-            this._socket.on('message', (event) => self.onClientMessageReceived(event));
+            this._address = options.address || `${window.location.hostname}:${window.location.port}`;
+            this._binaryType = options.binaryType || 'arraybuffer';
+            this._isDebug = !!(options.isDebug);
+            this._socket = null;
+            this._sessionId = null;
+            this._userId = null;
         }
-        connect(sessionId) {
-            if (this._isDebug) {
-                console.log('CONNECTING');
+        connect(userId, sessionId) {
+            if (this._socket) {
+                throw Error('Connect attempted while socket already connected.');
             }
-            this._socket.connect(this._userId, sessionId);
+            if (!userId || !sessionId) {
+                throw Error('Both userId and sessionId must be supplied for connect().');
+            }
+            const socketUrl = `wss://${this._address}/client`;
+            const socket = new WebSocket(socketUrl);
+            const self = this;
+            if (this._binaryType) {
+                socket.binaryType = this._binaryType;
+            }
+            socket.onclose = (event) => self.emitExtended('close', event, socket, () => self.disconnect());
+            socket.onerror = (event) => self.emitExtended('error', event, socket, () => self.disconnect());
+            socket.onmessage = (event) => self.emitExtended('message', event, socket);
+            socket.onopen = (event) => self.emitExtended('open', event, socket, () => self.onOpen());
+            this._socket = socket;
+            this._sessionId = sessionId;
+            this._userId = userId;
         }
         disconnect() {
-            if (this._isDebug) {
-                console.log(`DEBUG: ApplicationClient disconnecting if connected.`);
+            const socket = this._socket;
+            this._socket = null;
+            if (socket) {
+                if (this._isDebug) {
+                    console.debug('Disconnect of web-socket requested by local application.');
+                }
+                socket.close();
             }
-            this._avatar = null;
-            this._socket.disconnect();
-            if (this._gui) {
-                this._gui.stopRun();
-            }
-        }
-        interpretCommand(command) {
-            if (command) {
-                const result = this._commandInterpreter.interpretCommand(this._userId, command, this._avatars);
-                if (result.log && this._isDebug) {
-                    console.log(result.log);
-                }
-                if (result.message && (this._isDebug || (result.category !== Hepzi.ClientCategory.Debug && result.category !== Hepzi.ClientCategory.Error))) {
-                    ((typeof result.message === 'string' || result.message instanceof String) ? [result.message] : result.message)
-                        .forEach(message => this.emit('message', {
-                        text: message,
-                        colour: result.category == Hepzi.ClientCategory.Error ? 'text-danger' : 'text-secondary'
-                    }));
-                }
-                if (result.buffer) {
-                    this.send(result.buffer);
-                }
-                if (result.isTerminal) {
-                    this.emit('close', null);
-                }
+            else if (this._isDebug) {
+                console.debug('Disconnect of non-open web-socket requested by local application: ignored.');
             }
         }
-        onClientMessageReceived(event) {
-            if (event && event.data) {
-                const result = this._responseParser.parseResponse(this._userId, event.data, this._avatars);
-                if (result.log && this._isDebug) {
-                    console.log(result.log);
+        emitExtended(eventName, event, socket, callback) {
+            if (socket && socket === this._socket) {
+                if (this._isDebug && callback) {
+                    console.debug(`"${eventName}" event raised for current web-socket: running direct callback.`);
                 }
-                if (result.message && (this._isDebug || (result.category !== Hepzi.ClientCategory.Debug &&
-                    result.category !== Hepzi.ClientCategory.Error))) {
-                    this.emit('message', { text: result.message, colour: result.determineTextColourClass() });
+                callback === null || callback === void 0 ? void 0 : callback();
+                if (this._isDebug) {
+                    console.debug(`Emitting "${eventName}" event from socket.`);
                 }
-                if (result.category !== Hepzi.ClientCategory.Error) {
-                    if (result.avatar != null) {
-                        switch (result.responseType) {
-                            case Hepzi.ClientResponseType.AddInstanceSession:
-                            case Hepzi.ClientResponseType.InitialInstanceSession:
-                                if (this._avatar) {
-                                    this._gui.addAvatar(result.avatar);
-                                }
-                                else if (result.avatar.isSelf) {
-                                    this._gui.createScene();
-                                    for (const key in this._avatars) {
-                                        const avatar = this._avatars[parseInt(key)];
-                                        this._gui.addAvatar(avatar);
-                                    }
-                                    if (this._updateTimerHandle) {
-                                        window.clearInterval(this._updateTimerHandle);
-                                        this._updateTimerHandle = null;
-                                    }
-                                    const self = this;
-                                    this._avatar = result.avatar;
-                                    this._updateTimerHandle = window.setInterval(() => self.onUpdateTimer(), 10);
-                                    this._gui.startRun();
-                                }
-                                break;
-                            case Hepzi.ClientResponseType.RemoveInstanceSession:
-                                this._gui.removeAvatar(result.avatar);
-                                break;
-                        }
+                this.emit(eventName, event);
+            }
+            else if (this._isDebug) {
+                console.debug(`"${eventName}" event raised for non-current web-socket: ignored.`);
+            }
+        }
+        onOpen() {
+            if (!this._sessionId || !this._userId) {
+                throw Error(`Invalid state on open`);
+            }
+            else {
+                if (this._isDebug) {
+                    console.debug(`Connecting userId ${this._userId} to session ${this._sessionId}`);
+                }
+                const buffer = new ArrayBuffer(8);
+                const writer = new Hepzi.ArrayBufferWrapper(buffer);
+                writer.putInteger(this._userId);
+                writer.putInteger(this._sessionId);
+                if (this._isDebug) {
+                    console.log(`Received message from client: ${buffer}`);
+                }
+                this.send(buffer);
+            }
+        }
+        send(message) {
+            let result = false;
+            try {
+                if (this._socket) {
+                    if (this._isDebug) {
+                        console.debug(`Sending [${message}] to connected client.`);
                     }
+                    this._socket.send(message);
+                    result = true;
                 }
-                if (result.isTerminal) {
-                    const self = this;
-                    this.disconnect();
-                    window.setTimeout(() => self.emit('kicked', null), 2500);
-                }
-            }
-        }
-        onClose() {
-            if (this._isDebug) {
-                console.log('CLOSING');
-            }
-        }
-        onConnecting() {
-            if (this._isDebug) {
-                console.log('CONNECTED');
-            }
-            Object.keys(this._avatars).forEach(userId => delete this._avatars[parseInt(userId)]);
-        }
-        send(buffer) {
-            if (this._isDebug) {
-                console.log(`DEBUG: ApplicationClient sending array-buffer of size ${new Hepzi.ArrayBufferWrapper(buffer).length}`);
-            }
-            this._socket.send(buffer);
-        }
-        onUpdateTimer() {
-            if (this._socket && this._avatar) {
-                if (this._avatar.hasPositionOrDirectionChanged()) {
-                    this._avatar.updateLastPositionAndDirection();
-                    this.send(Hepzi.ClientCommandBuilder.MoveClient(this._avatar));
+                else if (this._isDebug) {
+                    console.debug('Send on non-open socket: ignored.');
                 }
             }
-        }
-    }
-    Hepzi.ApplicationClient = ApplicationClient;
-})(Hepzi || (Hepzi = {}));
-var Hepzi;
-(function (Hepzi) {
-    class Avatar {
-        constructor(username, isSelf, userId, position, direction) {
-            this.direction = direction;
-            this.isSelf = isSelf;
-            this.name = username;
-            this.mesh = null;
-            this.position = position;
-            this.updateRotation = () => { };
-            this.userId = userId;
-            this._lastDirection = new BABYLON.Vector3();
-            this._lastPosition = new BABYLON.Vector3();
-        }
-        hasPositionOrDirectionChanged() {
-            return !(this._lastDirection.equals(this.direction) && this._lastPosition.equals(this.position));
-        }
-        updateLastPositionAndDirection() {
-            this._lastDirection.copyFrom(this.direction);
-            this._lastPosition.copyFrom(this.position);
-        }
-    }
-    Hepzi.Avatar = Avatar;
-})(Hepzi || (Hepzi = {}));
-var Hepzi;
-(function (Hepzi) {
-    let ClientCategory;
-    (function (ClientCategory) {
-        ClientCategory[ClientCategory["Debug"] = 0] = "Debug";
-        ClientCategory[ClientCategory["Normal"] = 1] = "Normal";
-        ClientCategory[ClientCategory["Important"] = 2] = "Important";
-        ClientCategory[ClientCategory["System"] = 3] = "System";
-        ClientCategory[ClientCategory["Error"] = 4] = "Error";
-    })(ClientCategory = Hepzi.ClientCategory || (Hepzi.ClientCategory = {}));
-})(Hepzi || (Hepzi = {}));
-var Hepzi;
-(function (Hepzi) {
-    class ClientCommand {
-        constructor(command) {
-            this.category = Hepzi.ClientCategory.Normal;
-            this.isTerminal = false;
-            this.command = command;
-        }
-    }
-    Hepzi.ClientCommand = ClientCommand;
-})(Hepzi || (Hepzi = {}));
-var Hepzi;
-(function (Hepzi) {
-    let ClientRequestType;
-    (function (ClientRequestType) {
-        ClientRequestType[ClientRequestType["Unknown"] = 0] = "Unknown";
-        ClientRequestType[ClientRequestType["InstanceMessage"] = 1] = "InstanceMessage";
-        ClientRequestType[ClientRequestType["KickClient"] = 2] = "KickClient";
-        ClientRequestType[ClientRequestType["MoveClient"] = 3] = "MoveClient";
-    })(ClientRequestType = Hepzi.ClientRequestType || (Hepzi.ClientRequestType = {}));
-})(Hepzi || (Hepzi = {}));
-var Hepzi;
-(function (Hepzi) {
-    class ClientResponse {
-        constructor(responseType) {
-            this.isTerminal = false;
-            this.responseType = responseType;
-            this.category = Hepzi.ClientCategory.Normal;
-        }
-        determineTextColourClass() {
-            let colour;
-            switch (this.category) {
-                case Hepzi.ClientCategory.Debug:
-                    colour = 'text-secondary';
-                    break;
-                case Hepzi.ClientCategory.Error:
-                case Hepzi.ClientCategory.System:
-                    colour = 'text-danger';
-                    break;
-                case Hepzi.ClientCategory.Important:
-                    colour = 'text-primary';
-                    break;
-                default:
-                    colour = 'text-success';
-                    break;
+            catch (error) {
+                console.log(`Error during send on websocket: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
             }
-            return colour;
+            return result;
         }
     }
-    Hepzi.ClientResponse = ClientResponse;
-})(Hepzi || (Hepzi = {}));
-var Hepzi;
-(function (Hepzi) {
-    let ClientResponseType;
-    (function (ClientResponseType) {
-        ClientResponseType[ClientResponseType["Unknown"] = 0] = "Unknown";
-        ClientResponseType[ClientResponseType["Welcome"] = 1] = "Welcome";
-        ClientResponseType[ClientResponseType["Heartbeat"] = 2] = "Heartbeat";
-        ClientResponseType[ClientResponseType["InitialInstanceSession"] = 3] = "InitialInstanceSession";
-        ClientResponseType[ClientResponseType["AddInstanceSession"] = 4] = "AddInstanceSession";
-        ClientResponseType[ClientResponseType["RemoveInstanceSession"] = 5] = "RemoveInstanceSession";
-        ClientResponseType[ClientResponseType["InstanceMessage"] = 6] = "InstanceMessage";
-        ClientResponseType[ClientResponseType["KickClient"] = 7] = "KickClient";
-        ClientResponseType[ClientResponseType["MoveClient"] = 8] = "MoveClient";
-    })(ClientResponseType = Hepzi.ClientResponseType || (Hepzi.ClientResponseType = {}));
+    Hepzi.WebSocketClient = WebSocketClient;
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
@@ -648,6 +578,10 @@ var Hepzi;
             const scene = new BABYLON.Scene(this._engine);
             const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), scene);
             const ground = BABYLON.Mesh.CreateGround('terrain', 6, 6, 2, scene, false);
+            const material = new BABYLON.StandardMaterial('ground-material', scene);
+            material.alpha = 0.5;
+            material.diffuseColor = new BABYLON.Color3(0.2, 0.4, 0.4);
+            ground.material = material;
             this._scene = scene;
             this.addKeyboardHandler();
             this.addMouseHandler();
@@ -713,105 +647,130 @@ var Hepzi;
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
-    class WebSocketClient extends Hepzi.EventEmitter {
-        constructor(options) {
-            options = options || {};
+    class ApplicationClient extends Hepzi.EventEmitter {
+        constructor(factory, userId) {
             super();
-            this._address = options.address || `${window.location.hostname}:${window.location.port}`;
-            this._binaryType = options.binaryType || 'arraybuffer';
-            this._isDebug = !!(options.isDebug);
-            this._socket = null;
-            this._sessionId = null;
-            this._userId = null;
-        }
-        connect(userId, sessionId) {
-            if (this._socket) {
-                throw Error('Connect attempted while socket already connected.');
-            }
-            if (!userId || !sessionId) {
-                throw Error('Both userId and sessionId must be supplied for connect().');
-            }
-            const socketUrl = `wss://${this._address}/client`;
-            const socket = new WebSocket(socketUrl);
-            const self = this;
-            if (this._binaryType) {
-                socket.binaryType = this._binaryType;
-            }
-            socket.onclose = (event) => self.emitExtended('close', event, socket, () => self.disconnect());
-            socket.onerror = (event) => self.emitExtended('error', event, socket, () => self.disconnect());
-            socket.onmessage = (event) => self.emitExtended('message', event, socket);
-            socket.onopen = (event) => self.emitExtended('open', event, socket, () => self.onOpen());
-            this._socket = socket;
-            this._sessionId = sessionId;
+            this._avatar = null;
+            this._updateTimerHandle = null;
+            this._avatars = {};
             this._userId = userId;
+            this._commandInterpreter = factory.createClientCommandInterpreter();
+            this._gui = factory.createGuiClient('canvas');
+            this._isDebug = factory.isDebug('ApplicationClient');
+            this._responseParser = factory.createClientResponseParser();
+            this._socket = factory.createWebSocketClient();
+            const self = this;
+            this._socket.on('open', () => self.onConnecting());
+            this._socket.on('close', () => self.emit('close', self));
+            this._socket.on('error', () => self.emit('error', self));
+            this._socket.on('message', (event) => self.onClientMessageReceived(event));
+        }
+        connect(sessionId) {
+            if (this._isDebug) {
+                console.log('CONNECTING');
+            }
+            this._socket.connect(this._userId, sessionId);
         }
         disconnect() {
-            const socket = this._socket;
-            this._socket = null;
-            if (socket) {
-                if (this._isDebug) {
-                    console.debug('Disconnect of web-socket requested by local application.');
-                }
-                socket.close();
+            if (this._isDebug) {
+                console.log(`DEBUG: ApplicationClient disconnecting if connected.`);
             }
-            else if (this._isDebug) {
-                console.debug('Disconnect of non-open web-socket requested by local application: ignored.');
+            this._avatar = null;
+            this._socket.disconnect();
+            if (this._gui) {
+                this._gui.stopRun();
             }
         }
-        emitExtended(eventName, event, socket, callback) {
-            if (socket && socket === this._socket) {
-                if (this._isDebug && callback) {
-                    console.debug(`"${eventName}" event raised for current web-socket: running direct callback.`);
+        interpretCommand(command) {
+            if (command) {
+                const result = this._commandInterpreter.interpretCommand(this._userId, command, this._avatars);
+                if (result.log && this._isDebug) {
+                    console.log(result.log);
                 }
-                callback === null || callback === void 0 ? void 0 : callback();
-                if (this._isDebug) {
-                    console.debug(`Emitting "${eventName}" event from socket.`);
+                if (result.message && (this._isDebug || (result.category !== Hepzi.ClientCategory.Debug && result.category !== Hepzi.ClientCategory.Error))) {
+                    ((typeof result.message === 'string' || result.message instanceof String) ? [result.message] : result.message)
+                        .forEach(message => this.emit('message', {
+                        text: message,
+                        colour: result.category == Hepzi.ClientCategory.Error ? 'text-danger' : 'text-secondary'
+                    }));
                 }
-                this.emit(eventName, event);
-            }
-            else if (this._isDebug) {
-                console.debug(`"${eventName}" event raised for non-current web-socket: ignored.`);
-            }
-        }
-        onOpen() {
-            if (!this._sessionId || !this._userId) {
-                throw Error(`Invalid state on open`);
-            }
-            else {
-                if (this._isDebug) {
-                    console.debug(`Connecting userId ${this._userId} to session ${this._sessionId}`);
+                if (result.buffer) {
+                    this.send(result.buffer);
                 }
-                const buffer = new ArrayBuffer(8);
-                const writer = new Hepzi.ArrayBufferWrapper(buffer);
-                writer.putInteger(this._userId);
-                writer.putInteger(this._sessionId);
-                if (this._isDebug) {
-                    console.log(`Received message from client: ${buffer}`);
+                if (result.isTerminal) {
+                    this.emit('close', null);
                 }
-                this.send(buffer);
             }
         }
-        send(message) {
-            let result = false;
-            try {
-                if (this._socket) {
-                    if (this._isDebug) {
-                        console.debug(`Sending [${message}] to connected client.`);
+        onClientMessageReceived(event) {
+            if (event && event.data) {
+                const result = this._responseParser.parseResponse(this._userId, event.data, this._avatars);
+                if (result.log && this._isDebug) {
+                    console.log(result.log);
+                }
+                if (result.message && (this._isDebug || (result.category !== Hepzi.ClientCategory.Debug &&
+                    result.category !== Hepzi.ClientCategory.Error))) {
+                    this.emit('message', { text: result.message, colour: result.determineTextColourClass() });
+                }
+                if (result.category !== Hepzi.ClientCategory.Error) {
+                    if (result.avatar != null) {
+                        switch (result.responseType) {
+                            case Hepzi.ClientResponseType.AddInstanceSession:
+                            case Hepzi.ClientResponseType.InitialInstanceSession:
+                                if (this._avatar) {
+                                    this._gui.addAvatar(result.avatar);
+                                }
+                                else if (result.avatar.isSelf) {
+                                    this._gui.createScene();
+                                    for (const key in this._avatars) {
+                                        const avatar = this._avatars[parseInt(key)];
+                                        this._gui.addAvatar(avatar);
+                                    }
+                                    if (this._updateTimerHandle) {
+                                        window.clearInterval(this._updateTimerHandle);
+                                        this._updateTimerHandle = null;
+                                    }
+                                    const self = this;
+                                    this._avatar = result.avatar;
+                                    this._updateTimerHandle = window.setInterval(() => self.onUpdateTimer(), 10);
+                                    this._gui.startRun();
+                                }
+                                break;
+                            case Hepzi.ClientResponseType.RemoveInstanceSession:
+                                this._gui.removeAvatar(result.avatar);
+                                break;
+                        }
                     }
-                    this._socket.send(message);
-                    result = true;
                 }
-                else if (this._isDebug) {
-                    console.debug('Send on non-open socket: ignored.');
+                if (result.isTerminal) {
+                    const self = this;
+                    this.disconnect();
+                    window.setTimeout(() => self.emit('close', null), 2500);
                 }
             }
-            catch (error) {
-                console.log(`Error during send on websocket: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
+        }
+        onConnecting() {
+            if (this._isDebug) {
+                console.log('CONNECTED');
             }
-            return result;
+            Object.keys(this._avatars).forEach(userId => delete this._avatars[parseInt(userId)]);
+        }
+        send(buffer) {
+            if (this._isDebug) {
+                console.log(`SEND array-buffer of size ${new Hepzi.ArrayBufferWrapper(buffer).length}`);
+            }
+            this._socket.send(buffer);
+        }
+        onUpdateTimer() {
+            if (this._socket && this._avatar) {
+                if (this._avatar.hasPositionOrDirectionChanged()) {
+                    this._avatar.updateLastPositionAndDirection();
+                    this.send(Hepzi.ClientCommandBuilder.MoveClient(this._avatar));
+                }
+            }
         }
     }
-    Hepzi.WebSocketClient = WebSocketClient;
+    Hepzi.ApplicationClient = ApplicationClient;
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
@@ -820,6 +779,8 @@ var Hepzi;
             this._debugClasses = {};
         }
         createApplicationClient(userId) { return new Hepzi.ApplicationClient(this, userId); }
+        createClientCommandInterpreter() { return new Hepzi.ClientCommandInterpreter(); }
+        createClientResponseParser() { return new Hepzi.ClientResponseParser(); }
         createGuiClient(canvasName) { return new Hepzi.GuiClient(this, canvasName); }
         createWebSocketClient(options) { return new Hepzi.WebSocketClient(Object.assign(Object.assign({}, options), { isDebug: this.isDebug('WebSocketClient') || (options === null || options === void 0 ? void 0 : options.isDebug) })); }
         debug(className) { this._debugClasses[className] = true; }
@@ -827,6 +788,47 @@ var Hepzi;
     }
     Factory.instance = new Factory();
     Hepzi.Factory = Factory;
+})(Hepzi || (Hepzi = {}));
+var Hepzi;
+(function (Hepzi) {
+    class ClientCommand {
+        constructor(command) {
+            this.category = Hepzi.ClientCategory.Normal;
+            this.isTerminal = false;
+            this.command = command;
+        }
+    }
+    Hepzi.ClientCommand = ClientCommand;
+})(Hepzi || (Hepzi = {}));
+var Hepzi;
+(function (Hepzi) {
+    class ClientResponse {
+        constructor(responseType) {
+            this.isTerminal = false;
+            this.responseType = responseType;
+            this.category = Hepzi.ClientCategory.Normal;
+        }
+        determineTextColourClass() {
+            let colour;
+            switch (this.category) {
+                case Hepzi.ClientCategory.Debug:
+                    colour = 'text-secondary';
+                    break;
+                case Hepzi.ClientCategory.Error:
+                case Hepzi.ClientCategory.System:
+                    colour = 'text-danger';
+                    break;
+                case Hepzi.ClientCategory.Important:
+                    colour = 'text-primary';
+                    break;
+                default:
+                    colour = 'text-success';
+                    break;
+            }
+            return colour;
+        }
+    }
+    Hepzi.ClientResponse = ClientResponse;
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {

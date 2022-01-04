@@ -1,4 +1,5 @@
-﻿/// <reference path="babylon.module.d.ts"/>
+﻿/// <reference path="../external/babylon.module.d.ts"/>
+/// <reference path="../avatar.ts" />
 
 namespace Hepzi {
     class HepziModel {
@@ -87,6 +88,7 @@ namespace Hepzi {
                         case BABYLON.KeyboardEventTypes.KEYDOWN:
                             console.log("KEY DOWN: ", kbInfo.event.key, kbInfo.event.code, kbInfo.event.shiftKey);
                             break;
+
                         case BABYLON.KeyboardEventTypes.KEYUP:
                             console.log("KEY UP: ", kbInfo.event.key, kbInfo.event.code, kbInfo.event.shiftKey);
                             break;
@@ -146,6 +148,13 @@ namespace Hepzi {
             const scene = new BABYLON.Scene(this._engine);
             const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), scene);
             const ground = BABYLON.Mesh.CreateGround('terrain', 6, 6, 2, scene, false);
+
+            const material = new BABYLON.StandardMaterial('ground-material', scene);
+
+            material.alpha = 0.5;
+            material.diffuseColor = new BABYLON.Color3(0.2, 0.4, 0.4);
+
+            ground.material = material;
 
             this._scene = scene;
             this.addKeyboardHandler();

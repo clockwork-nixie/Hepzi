@@ -1,4 +1,6 @@
-﻿namespace Hepzi {
+﻿/// <reference path="../external/babylon.module.d.ts"/>
+
+namespace Hepzi {
     export class FreeCameraKeyboardWalkInput implements BABYLON.ICameraInput<BABYLON.FreeCamera> {
         public angularSpeed: number = 0.1;
         public camera: BABYLON.Nullable<BABYLON.FreeCamera> | null = null;

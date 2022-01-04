@@ -1,4 +1,8 @@
-﻿namespace Hepzi {
+﻿/// <reference path="../avatar.ts" />
+/// <reference path="../utilities/arrayBufferWrapper.ts" />
+/// <reference path="clientRequestType.ts" />
+
+namespace Hepzi {
     export class ClientCommandBuilder {
         public static MoveClient(avatar: Avatar): ArrayBuffer {
             const buffer = new ArrayBuffer(25);

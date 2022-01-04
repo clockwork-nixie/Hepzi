@@ -1,4 +1,6 @@
-﻿namespace Hepzi {
+﻿/// <reference path="../external/babylon.module.d.ts"/>
+
+namespace Hepzi {
     export class FreeCameraSearchInput implements BABYLON.ICameraInput<BABYLON.FreeCamera> {
         public angularSensibility: number;
         public buttons: number[];

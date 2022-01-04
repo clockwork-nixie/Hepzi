@@ -1,10 +1,14 @@
 ﻿/// <reference path="applicationClient.ts" />
-/// <reference path="guiClient.ts" />
-/// <reference path="webSocketClient.ts" />
+/// <reference path="comms/clientCommandInterpreter.ts" />
+/// <reference path="comms/clientResponseParser.ts" />
+/// <reference path="comms/webSocketClient.ts" />
+/// <reference path="gui/guiClient.ts" />
 
 namespace Hepzi {
     export interface IFactory {
         createApplicationClient(userId: number): ApplicationClient;
+        createClientCommandInterpreter(): ClientCommandInterpreter;
+        createClientResponseParser(): ClientResponseParser;
         createGuiClient(canvasName: string): GuiClient;
         createWebSocketClient(options?: IWebSocketClientOptions): WebSocketClient;
 
@@ -19,12 +23,13 @@ namespace Hepzi {
 
 
         public createApplicationClient(userId: number): ApplicationClient { return new ApplicationClient(this, userId); }
+        public createClientCommandInterpreter(): ClientCommandInterpreter { return new ClientCommandInterpreter(); }
+        public createClientResponseParser(): ClientResponseParser { return new ClientResponseParser(); }
         public createGuiClient(canvasName: string): GuiClient { return new GuiClient(this, canvasName); }
         public createWebSocketClient(options?: IWebSocketClientOptions): WebSocketClient { return new WebSocketClient({ ...options, isDebug: this.isDebug('WebSocketClient') || options?.isDebug }); }
 
 
-        debug(className: string): void { this._debugClasses[className] = true; }
-
+        public debug(className: string): void { this._debugClasses[className] = true; }
         public isDebug(className: string): boolean { return !!this._debugClasses[className]; }
 
         public static readonly instance: IFactory = new Factory();

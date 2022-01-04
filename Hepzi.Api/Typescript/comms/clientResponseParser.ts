@@ -1,4 +1,7 @@
-﻿/// <reference path="arrayBufferWrapper.ts" />
+﻿/// <reference path="../avatar.ts" />
+/// <reference path="../utilities/arrayBufferWrapper.ts" />
+/// <reference path="clientCategory.ts" />
+/// <reference path="clientResponseType.ts" />
 
 namespace Hepzi {
     export class ClientResponseParser {

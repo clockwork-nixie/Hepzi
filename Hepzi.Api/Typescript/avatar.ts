@@ -1,3 +1,5 @@
+/// <reference path="external/babylon.module.d.ts"/>
+
 namespace Hepzi {
     export class Avatar {
         private readonly _lastDirection: BABYLON.Vector3;
@@ -16,6 +18,7 @@ namespace Hepzi {
             this._lastPosition = new BABYLON.Vector3();
         }
 
+
         public readonly isSelf: boolean;
         public mesh: BABYLON.Mesh | null;
         public readonly name: string;
@@ -26,7 +29,9 @@ namespace Hepzi {
 
 
         public hasPositionOrDirectionChanged() {
-            return !(this._lastDirection.equals(this.direction) && this._lastPosition.equals(this.position));
+            return !(
+                this._lastDirection.equals(this.direction) &&
+                this._lastPosition.equals(this.position));
         }
 
 

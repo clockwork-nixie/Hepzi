@@ -1,5 +1,5 @@
-﻿/// <reference path="arrayBufferWrapper.ts" />
-/// <reference path="eventEmitter.ts" />
+﻿/// <reference path="../utilities/arrayBufferWrapper.ts" />
+/// <reference path="../utilities/eventEmitter.ts" />
 
 namespace Hepzi {
     export type WebSocketEventName = 'close' | 'error' | 'open' | 'message';

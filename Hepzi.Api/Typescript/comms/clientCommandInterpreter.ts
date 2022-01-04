@@ -1,5 +1,8 @@
-﻿/// <reference path="arrayBufferWrapper.ts" />
+﻿/// <reference path="../avatar.ts" />
+/// <reference path="../utilities/arrayBufferWrapper.ts" />
+/// <reference path="clientCategory.ts" />
 /// <reference path="clientCommandBuilder.ts" />
+/// <reference path="clientRequestType.ts" />
 
 namespace Hepzi {
     export class ClientCommandInterpreter {
@@ -31,7 +34,7 @@ namespace Hepzi {
 
                                 if (targetAvatar) {
                                     const buffer = new ArrayBuffer(5);
-                                    const writer = new Hepzi.ArrayBufferWrapper(buffer);
+                                    const writer = new ArrayBufferWrapper(buffer);
 
                                     writer.putByte(result.command);
                                     writer.putInteger(targetAvatar);
@@ -50,7 +53,7 @@ namespace Hepzi {
                             const remainder = request.slice(command.length).trim();
                             const message = new TextEncoder().encode(remainder);
                             const buffer = new ArrayBuffer(1 + message.length);
-                            const writer = new Hepzi.ArrayBufferWrapper(buffer);
+                            const writer = new ArrayBufferWrapper(buffer);
 
                             result = new ClientCommand(ClientRequestType.InstanceMessage);
 

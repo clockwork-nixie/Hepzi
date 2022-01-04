@@ -1,4 +1,8 @@
-﻿namespace Hepzi {
+﻿/// <reference path="../avatar.ts" />
+/// <reference path="clientCategory.ts" />
+/// <reference path="clientResponseType.ts" />
+
+namespace Hepzi {
     export class ClientResponse {
         public avatar?: Avatar;
         public category: ClientCategory;

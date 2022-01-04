@@ -3,7 +3,7 @@
         private _callbacks: { [index: string]: ((data: TData) => void)[] } = {};
 
 
-        public emit(key: string, data: TData) {
+        public emit(key: TEventName, data: TData) {
             const callbacks = (this._callbacks[key] || []).slice();
 
             callbacks.forEach(callback => callback(data));
