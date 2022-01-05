@@ -5,6 +5,14 @@
 
 namespace Hepzi {
     export class ClientResponseParser {
+        private readonly _isDebug: boolean;
+
+
+        public constructor(factory: IFactory) {
+            this._isDebug = factory.isDebug('ClientResponseParser');
+        }
+
+
         public parseResponse(userId: number, response: any, avatars: AvatarLookup): ClientResponse {
             let result: ClientResponse;
 
@@ -13,7 +21,7 @@ namespace Hepzi {
                     result = this.parseBinaryResponse(userId, new ArrayBufferWrapper(response as ArrayBuffer), avatars);
                 } else if (typeof response === 'string' || response instanceof String) {
                     result = new ClientResponse(ClientResponseType.InstanceMessage);
-                    result.log = `SYSTEM MESSAGE: ${response}`;
+                    result.log = this._isDebug ? `SYSTEM MESSAGE: ${response}` : undefined;
                     result.message = `**** ${response} ****`;
                     result.category = ClientCategory.System;
                 } else {
@@ -55,7 +63,7 @@ namespace Hepzi {
 
                 switch (result.responseType) {
                     case ClientResponseType.Welcome:
-                        result.log = 'JOINING';
+                        result.log = this._isDebug ? 'JOINING' : undefined;
                         result.message = 'Connected to instance.';
                         break;
 
@@ -69,7 +77,7 @@ namespace Hepzi {
                         result.avatar = this.parseAvatar(userId, buffer);
                         result.userId = result.avatar.userId;
                         avatars[result.userId] = result.avatar;
-                        result.log = `INITIAL USER: #${result.userId} => ${result.avatar.name}`;
+                        result.log = this._isDebug ? `INITIAL USER: #${result.userId} => ${result.avatar.name}` : undefined;
                         result.message = `${result.avatar.name} is here.`;
                         break;
 
@@ -77,7 +85,7 @@ namespace Hepzi {
                         result.avatar = this.parseAvatar(userId, buffer);
                         result.userId = result.avatar.userId;
                         avatars[result.userId] = result.avatar;
-                        result.log = `ADD USER: #${result.userId} => ${result.avatar.name}`;
+                        result.log = this._isDebug ? `ADD USER: #${result.userId} => ${result.avatar.name}` : undefined;
                         result.message = result.userId === userId ? 'You have joined the area.' : `${result.avatar.name} has joined the area.`;
                         result.category = ClientCategory.Important;
                         break;
@@ -86,7 +94,7 @@ namespace Hepzi {
                         result.userId = buffer.getInteger();
                         result.avatar = avatars[result.userId];
                         const avatarName = result.avatar?.name || `User#${result.userId}`
-                        result.log = `REMOVE USER: #${result.userId}`;
+                        result.log = this._isDebug ? `REMOVE USER: #${result.userId}` : undefined;
                         result.message = result.userId !== userId ? `${avatarName} has left the area.`: '';
                         result.category = ClientCategory.Important;
                         delete avatars[result.userId];
@@ -94,13 +102,13 @@ namespace Hepzi {
 
                     case ClientResponseType.InstanceMessage:
                         const text = buffer.getString();
-                        result.log = `INSTANCE MESSAGE: ${text}`;
+                        result.log = this._isDebug ? `INSTANCE MESSAGE: ${text}` : undefined;
                         result.message = `**** ${text} ****`;
                         result.category = ClientCategory.System;
                         break;
 
                     case ClientResponseType.KickClient:
-                        result.log = 'KICKED';
+                        result.log = this._isDebug ? 'KICKED' : undefined;
                         result.message = `Your session has been terminated.`;
                         result.category = ClientCategory.System;
                         result.isTerminal = true;
@@ -117,10 +125,10 @@ namespace Hepzi {
                                 avatar.position.copyFrom(position);
                                 avatar.direction.copyFrom(direction);
                                 avatar.updateRotation();
-                                result.log = `MOVE USER: #${result.userId} (${position.x}, ${position.y}, ${position.z})`;
+                                result.log = this._isDebug ? `MOVE USER: #${result.userId} (${position.x}, ${position.y}, ${position.z})` : undefined;
                                 result.category = ClientCategory.Debug;
                             } else {
-                                result.log = `MOVE SELF NO-OP: (${position.x}, ${position.y}, ${position.z})`;
+                                result.log = this._isDebug ? `MOVE SELF NO-OP: (${position.x}, ${position.y}, ${position.z})` : undefined;
                                 result.category = ClientCategory.Debug;
                             }
                         } else {

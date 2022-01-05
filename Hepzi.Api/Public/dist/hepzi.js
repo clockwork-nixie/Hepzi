@@ -228,6 +228,9 @@ var Hepzi;
 var Hepzi;
 (function (Hepzi) {
     class ClientResponseParser {
+        constructor(factory) {
+            this._isDebug = factory.isDebug('ClientResponseParser');
+        }
         parseResponse(userId, response, avatars) {
             let result;
             try {
@@ -236,7 +239,7 @@ var Hepzi;
                 }
                 else if (typeof response === 'string' || response instanceof String) {
                     result = new Hepzi.ClientResponse(Hepzi.ClientResponseType.InstanceMessage);
-                    result.log = `SYSTEM MESSAGE: ${response}`;
+                    result.log = this._isDebug ? `SYSTEM MESSAGE: ${response}` : undefined;
                     result.message = `**** ${response} ****`;
                     result.category = Hepzi.ClientCategory.System;
                 }
@@ -274,7 +277,7 @@ var Hepzi;
                 result = new Hepzi.ClientResponse(buffer.getByte());
                 switch (result.responseType) {
                     case Hepzi.ClientResponseType.Welcome:
-                        result.log = 'JOINING';
+                        result.log = this._isDebug ? 'JOINING' : undefined;
                         result.message = 'Connected to instance.';
                         break;
                     case Hepzi.ClientResponseType.Heartbeat:
@@ -286,14 +289,14 @@ var Hepzi;
                         result.avatar = this.parseAvatar(userId, buffer);
                         result.userId = result.avatar.userId;
                         avatars[result.userId] = result.avatar;
-                        result.log = `INITIAL USER: #${result.userId} => ${result.avatar.name}`;
+                        result.log = this._isDebug ? `INITIAL USER: #${result.userId} => ${result.avatar.name}` : undefined;
                         result.message = `${result.avatar.name} is here.`;
                         break;
                     case Hepzi.ClientResponseType.AddInstanceSession:
                         result.avatar = this.parseAvatar(userId, buffer);
                         result.userId = result.avatar.userId;
                         avatars[result.userId] = result.avatar;
-                        result.log = `ADD USER: #${result.userId} => ${result.avatar.name}`;
+                        result.log = this._isDebug ? `ADD USER: #${result.userId} => ${result.avatar.name}` : undefined;
                         result.message = result.userId === userId ? 'You have joined the area.' : `${result.avatar.name} has joined the area.`;
                         result.category = Hepzi.ClientCategory.Important;
                         break;
@@ -301,19 +304,19 @@ var Hepzi;
                         result.userId = buffer.getInteger();
                         result.avatar = avatars[result.userId];
                         const avatarName = ((_a = result.avatar) === null || _a === void 0 ? void 0 : _a.name) || `User#${result.userId}`;
-                        result.log = `REMOVE USER: #${result.userId}`;
+                        result.log = this._isDebug ? `REMOVE USER: #${result.userId}` : undefined;
                         result.message = result.userId !== userId ? `${avatarName} has left the area.` : '';
                         result.category = Hepzi.ClientCategory.Important;
                         delete avatars[result.userId];
                         break;
                     case Hepzi.ClientResponseType.InstanceMessage:
                         const text = buffer.getString();
-                        result.log = `INSTANCE MESSAGE: ${text}`;
+                        result.log = this._isDebug ? `INSTANCE MESSAGE: ${text}` : undefined;
                         result.message = `**** ${text} ****`;
                         result.category = Hepzi.ClientCategory.System;
                         break;
                     case Hepzi.ClientResponseType.KickClient:
-                        result.log = 'KICKED';
+                        result.log = this._isDebug ? 'KICKED' : undefined;
                         result.message = `Your session has been terminated.`;
                         result.category = Hepzi.ClientCategory.System;
                         result.isTerminal = true;
@@ -328,11 +331,11 @@ var Hepzi;
                                 avatar.position.copyFrom(position);
                                 avatar.direction.copyFrom(direction);
                                 avatar.updateRotation();
-                                result.log = `MOVE USER: #${result.userId} (${position.x}, ${position.y}, ${position.z})`;
+                                result.log = this._isDebug ? `MOVE USER: #${result.userId} (${position.x}, ${position.y}, ${position.z})` : undefined;
                                 result.category = Hepzi.ClientCategory.Debug;
                             }
                             else {
-                                result.log = `MOVE SELF NO-OP: (${position.x}, ${position.y}, ${position.z})`;
+                                result.log = this._isDebug ? `MOVE SELF NO-OP: (${position.x}, ${position.y}, ${position.z})` : undefined;
                                 result.category = Hepzi.ClientCategory.Debug;
                             }
                         }
@@ -780,7 +783,7 @@ var Hepzi;
         }
         createApplicationClient(userId) { return new Hepzi.ApplicationClient(this, userId); }
         createClientCommandInterpreter() { return new Hepzi.ClientCommandInterpreter(); }
-        createClientResponseParser() { return new Hepzi.ClientResponseParser(); }
+        createClientResponseParser() { return new Hepzi.ClientResponseParser(this); }
         createGuiClient(canvasName) { return new Hepzi.GuiClient(this, canvasName); }
         createWebSocketClient(options) { return new Hepzi.WebSocketClient(Object.assign(Object.assign({}, options), { isDebug: this.isDebug('WebSocketClient') || (options === null || options === void 0 ? void 0 : options.isDebug) })); }
         debug(className) { this._debugClasses[className] = true; }

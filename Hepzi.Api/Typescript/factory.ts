@@ -24,7 +24,7 @@ namespace Hepzi {
 
         public createApplicationClient(userId: number): ApplicationClient { return new ApplicationClient(this, userId); }
         public createClientCommandInterpreter(): ClientCommandInterpreter { return new ClientCommandInterpreter(); }
-        public createClientResponseParser(): ClientResponseParser { return new ClientResponseParser(); }
+        public createClientResponseParser(): ClientResponseParser { return new ClientResponseParser(this); }
         public createGuiClient(canvasName: string): GuiClient { return new GuiClient(this, canvasName); }
         public createWebSocketClient(options?: IWebSocketClientOptions): WebSocketClient { return new WebSocketClient({ ...options, isDebug: this.isDebug('WebSocketClient') || options?.isDebug }); }
 
