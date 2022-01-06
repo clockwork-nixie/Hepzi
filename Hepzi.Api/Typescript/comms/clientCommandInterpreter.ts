@@ -1,4 +1,4 @@
-﻿/// <reference path="../avatar.ts" />
+﻿/// <reference path="../gui/avatar.ts" />
 /// <reference path="../utilities/arrayBufferWrapper.ts" />
 /// <reference path="clientCategory.ts" />
 /// <reference path="clientCommandBuilder.ts" />

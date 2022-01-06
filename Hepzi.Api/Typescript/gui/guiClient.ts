@@ -1,5 +1,5 @@
 ﻿/// <reference path="../external/babylon.module.d.ts"/>
-/// <reference path="../avatar.ts" />
+/// <reference path="./avatar.ts" />
 
 namespace Hepzi {
     class HepziModel {

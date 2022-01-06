@@ -14,9 +14,9 @@
         applicationModel.console.push(data);
 
         window.setTimeout(() => {
-            var consoleElements = document.getElementById("console").getElementsByClassName('console-line');
+            var consoleElements = document.getElementById('console')?.getElementsByClassName('console-line');
 
-            if (consoleElements.length) {
+            if (consoleElements?.length) {
                 consoleElements[consoleElements.length - 1].scrollIntoView();
             }
         }, 100);
@@ -55,8 +55,8 @@
                                         if (credentials && credentials.username && credentials.userId && credentials.sessionId) {
                                             model.credentials(credentials);
                                             createClient();
-                                            window.setTimeout(function () { document.getElementById('command').focus(); }, 0);
                                             model.isSending(false);
+                                            window.setTimeout(function () { document.getElementById('canvas').focus(); }, 1000);
                                         } else {
                                             model.isSending(false);
                                             alert('Invalid response from server');

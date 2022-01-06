@@ -72,20 +72,22 @@ namespace Hepzi.Application.Servers
         public bool ProcessClientRequest(Session<ZoneSessionState> session, ArraySegment<byte> data, object token)
         {
             var result = false;
+            ClientRequestType? command = null;
 
-            if (session.HasToken(token))
+            try
             {
-                if (data.Count == 0)    
+                if (session.HasToken(token))
                 {
-                    _actions.AddAction(session.Heartbeat(), session.UserId);
-                }
-                else
-                {
-                    var buffer = new BufferWrapper(data);
-                    var command = (ClientRequestType)buffer.Read();
-
-                    try
+                    if (data.Count == 0)
                     {
+                        _actions.AddAction(session.Heartbeat(), session.UserId);
+                    }
+                    else
+                    {
+                        var buffer = new BufferWrapper(data);
+                        
+                        command = (ClientRequestType)buffer.Read();
+
                         switch (command)
                         {
                             case ClientRequestType.InstanceMessage:
@@ -99,7 +101,7 @@ namespace Hepzi.Application.Servers
                             case ClientRequestType.MoveClient:
                                 var position = buffer.ReadVector3d();
                                 var direction = buffer.ReadVector3d();
-                                
+
                                 session.State.Position = position;
                                 session.State.Direction = direction;
 
@@ -110,12 +112,12 @@ namespace Hepzi.Application.Servers
                                 break;
                         }
                     }
-                    catch (Exception exception)
-                    { 
-                        // TODO: log error
-                    }
+                    result = true;
                 }
-                result = true;
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(exception, $"In {nameof(ProcessClientRequest)} processing '{command}' ({data.Count} bytes) for user #{session?.UserId}");
             }
 
             return result;

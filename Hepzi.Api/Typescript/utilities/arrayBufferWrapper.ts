@@ -88,7 +88,7 @@
         public putString(text: string) {
             const data = ArrayBufferWrapper._encoder.encode(text);
 
-            this._buffer.set(data, 0);
+            this._buffer.set(data, this._position);
             this._position += data?.length;
         }
 

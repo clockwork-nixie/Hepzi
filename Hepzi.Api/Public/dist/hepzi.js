@@ -1,6 +1,17 @@
 "use strict";
 var Hepzi;
 (function (Hepzi) {
+    let ClientCategory;
+    (function (ClientCategory) {
+        ClientCategory[ClientCategory["Debug"] = 0] = "Debug";
+        ClientCategory[ClientCategory["Normal"] = 1] = "Normal";
+        ClientCategory[ClientCategory["Important"] = 2] = "Important";
+        ClientCategory[ClientCategory["System"] = 3] = "System";
+        ClientCategory[ClientCategory["Error"] = 4] = "Error";
+    })(ClientCategory = Hepzi.ClientCategory || (Hepzi.ClientCategory = {}));
+})(Hepzi || (Hepzi = {}));
+var Hepzi;
+(function (Hepzi) {
     class Avatar {
         constructor(username, isSelf, userId, position, direction) {
             this.direction = direction;
@@ -23,17 +34,6 @@ var Hepzi;
         }
     }
     Hepzi.Avatar = Avatar;
-})(Hepzi || (Hepzi = {}));
-var Hepzi;
-(function (Hepzi) {
-    let ClientCategory;
-    (function (ClientCategory) {
-        ClientCategory[ClientCategory["Debug"] = 0] = "Debug";
-        ClientCategory[ClientCategory["Normal"] = 1] = "Normal";
-        ClientCategory[ClientCategory["Important"] = 2] = "Important";
-        ClientCategory[ClientCategory["System"] = 3] = "System";
-        ClientCategory[ClientCategory["Error"] = 4] = "Error";
-    })(ClientCategory = Hepzi.ClientCategory || (Hepzi.ClientCategory = {}));
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
