@@ -7,14 +7,16 @@
         private _position: number;
 
 
-        constructor(buffer: ArrayBuffer, length: number | null = null) {
+        constructor(buffer: ArrayBuffer) {
             this._buffer = new Uint8Array(buffer);
-            this.length = (length || length === 0)? length: buffer.byteLength;
+            this.length = buffer.byteLength;
             this._position = 0;
         }
 
 
-        public static calculateBytes(text: string) { return new Blob([text]).size; }
+        public static calculateBytes(text: string): number {
+            return new Blob([text]).size;
+        }
 
 
         public getByte(): number {
@@ -46,7 +48,7 @@
         }
 
 
-        public getString(length?: number) {
+        public getString(length?: number): string {
             if ((this._position + (length || 0)) > this.length) {
                 throw Error(`Buffer overrun reading hex[${this._position}..${this._position + (length ?? 0)}] of ${this.length}`);
             }
@@ -67,7 +69,9 @@
         public readonly length: number;
 
 
-        public position(): number { return this._position };
+        public position(): number {
+            return this._position
+        };
 
 
         public putByte(value: number): void {
@@ -78,12 +82,10 @@
         }
 
 
-        public putArray(buffer: ArrayBuffer): void {
-            this.putByteArray(new Uint8Array(buffer));
-        }
+        public putArray(buffer: ArrayBuffer): void { this.putByteArray(new Uint8Array(buffer)); }
 
 
-        public putByteArray(buffer: Uint8Array) {
+        public putByteArray(buffer: Uint8Array): void {
             if ((this._position + buffer.length) > this.length) {
                 throw Error(`Buffer overrun writing array[0..${buffer.length}] to ${this._position + 1} of ${this.length}`);
             }
@@ -99,12 +101,12 @@
         }
 
 
-        public putString(text: string) {
+        public putString(text: string): void {
             this.putByteArray(ArrayBufferWrapper._encoder.encode(text));
         }
 
 
-        putVector3d(vector: BABYLON.Vector3, scale: number = 1) {
+        putVector3d(vector: BABYLON.Vector3, scale: number = 1): void {
             this.putInteger(vector.x * scale);
             this.putInteger(vector.y * scale);
             this.putInteger(vector.z * scale);

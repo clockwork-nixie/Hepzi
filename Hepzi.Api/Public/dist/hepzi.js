@@ -38,12 +38,14 @@ var Hepzi;
 var Hepzi;
 (function (Hepzi) {
     class ArrayBufferWrapper {
-        constructor(buffer, length = null) {
+        constructor(buffer) {
             this._buffer = new Uint8Array(buffer);
-            this.length = (length || length === 0) ? length : buffer.byteLength;
+            this.length = buffer.byteLength;
             this._position = 0;
         }
-        static calculateBytes(text) { return new Blob([text]).size; }
+        static calculateBytes(text) {
+            return new Blob([text]).size;
+        }
         getByte() {
             if (this._position >= this.length) {
                 throw Error(`Buffer overrun reading byte ${this._position + 1} of ${this.length}`);
@@ -78,7 +80,9 @@ var Hepzi;
             const z = this.getInteger() / scale;
             return new BABYLON.Vector3(x, y, z);
         }
-        position() { return this._position; }
+        position() {
+            return this._position;
+        }
         ;
         putByte(value) {
             if (this._position >= this.length) {
@@ -86,9 +90,7 @@ var Hepzi;
             }
             this._buffer[this._position++] = value & 0xFF;
         }
-        putArray(buffer) {
-            this.putByteArray(new Uint8Array(buffer));
-        }
+        putArray(buffer) { this.putByteArray(new Uint8Array(buffer)); }
         putByteArray(buffer) {
             if ((this._position + buffer.length) > this.length) {
                 throw Error(`Buffer overrun writing array[0..${buffer.length}] to ${this._position + 1} of ${this.length}`);
