@@ -4,6 +4,17 @@
 
 namespace Hepzi {
     export class ClientCommandBuilder {
+        public static KickUser(userId: number): ArrayBuffer {
+            const buffer = new ArrayBuffer(5);
+            const writer = new ArrayBufferWrapper(buffer);
+
+            writer.putByte(ClientRequestType.KickClient);
+            writer.putInteger(userId);
+
+            return buffer;
+        }
+
+
         public static MoveClient(avatar: Avatar): ArrayBuffer {
             const buffer = new ArrayBuffer(25);
             const writer = new Hepzi.ArrayBufferWrapper(buffer);

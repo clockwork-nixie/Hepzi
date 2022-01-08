@@ -1,28 +1,12 @@
-﻿/// <reference path="comms/clientCategory.ts" />
-/// <reference path="comms/clientCommandBuilder.ts" />
-/// <reference path="comms/clientCommandInterpreter.ts" />
-/// <reference path="comms/clientRequestType.ts" />
-/// <reference path="comms/clientResponseParser.ts" />
-/// <reference path="comms/clientResponseType.ts" />
-/// <reference path="comms/webSocketClient.ts" />
-/// <reference path="gui/avatar.ts" />
-/// <reference path="gui/guiClient.ts" />
-/// <reference path="utilities/arrayBufferWrapper.ts" />
-/// <reference path="utilities/eventEmitter.ts" />
+﻿/// <reference path="utilities/eventEmitter.ts" />
 
 namespace Hepzi {
     export type ApplicationClientEventName = 'close' | 'console' | 'error' | 'message';
-
-    export interface IApplicationClientOptions {
-        isDebug?: boolean;
-        isDebugGui?: boolean;
-    }
 
 
     export class ApplicationClient extends EventEmitter<ApplicationClientEventName, any> {
         private _avatar: Avatar | null = null;
         private readonly _avatars: AvatarLookup;
-        private _commandInterpreter: ClientCommandInterpreter;
         private _isDebug: boolean;
         private _gui: GuiClient;
         private _responseParser: ClientResponseParser;
@@ -37,7 +21,6 @@ namespace Hepzi {
             this._avatars = {};
             this._userId = userId;
 
-            this._commandInterpreter = factory.createClientCommandInterpreter();
             this._gui = factory.createGuiClient('canvas');
             this._isDebug = factory.isDebug('ApplicationClient');
             this._responseParser = factory.createClientResponseParser();
@@ -76,7 +59,7 @@ namespace Hepzi {
 
         public interpretCommand(command: string): void {
             if (command) {
-                const result = this._commandInterpreter.interpretCommand(this._userId, command, this._avatars);
+                const result = ClientCommandInterpreter.interpretCommand(this._userId, command, this._avatars);
 
                 if (result.log && this._isDebug) {
                     console.log(result.log);
@@ -169,7 +152,7 @@ namespace Hepzi {
 
         public send(buffer: ArrayBuffer) {
             if (this._isDebug) {
-                console.log(`SEND array-buffer of size ${new ArrayBufferWrapper(buffer).length}`);
+                console.log(`SEND array-buffer of size ${buffer.byteLength}`);
             }
             this._socket.send(buffer);
         }

@@ -6,7 +6,7 @@
 
 namespace Hepzi {
     export class ClientCommandInterpreter {
-        public interpretCommand(userId: number, request: string, avatars: AvatarLookup): ClientCommand {
+        public static interpretCommand(userId: number, request: string, avatars: AvatarLookup): ClientCommand {
             let result: ClientCommand;
 
             try {
@@ -30,9 +30,12 @@ namespace Hepzi {
                                 result.category = ClientCategory.Error;
                             } else {
                                 const name = words[1];
-                                const targetAvatar = this.getUserIdByAvatarName(name, avatars);
+                                const targetAvatar = ClientCommandInterpreter.getUserIdByAvatarName(name, avatars);
 
-                                if (targetAvatar) {
+                                if (!targetAvatar) {
+                                    result.message = `Cannot kick unknown user: ${name}`;
+                                    result.category = ClientCategory.Error;
+                                } else {
                                     const buffer = new ArrayBuffer(5);
                                     const writer = new ArrayBufferWrapper(buffer);
 
@@ -42,9 +45,6 @@ namespace Hepzi {
                                     result.buffer = buffer;
                                     result.log = `SEND KICK #${userId}`;
                                     result.message = `${command} ${name}`;
-                                } else {
-                                    result.message = `Cannot kick unknown user: ${name}`;
-                                    result.category = ClientCategory.Error;
                                 }
                             }
                             break;
@@ -91,7 +91,7 @@ namespace Hepzi {
         }
 
 
-        private getUserIdByAvatarName(name: string, avatars: AvatarLookup): (number | null) {
+        private static getUserIdByAvatarName(name: string, avatars: AvatarLookup): (number | null) {
             name = name.toLowerCase();
 
             return parseInt(Object.keys(avatars).filter(userId => avatars[parseInt(userId)]?.name.toLowerCase() == name)[0]) || null;

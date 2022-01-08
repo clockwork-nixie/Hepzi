@@ -1,6 +1,9 @@
 body {
     overflow: hidden;
 }
+body:not(.hz-loaded) .hz-hide-on-load {
+    display: none;
+}
 .hz-canvas {
     min-height: 100px;
     min-width: 100px;

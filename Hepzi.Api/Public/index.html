@@ -19,7 +19,7 @@
     <![endif]-->
 </head>
 
-<body>
+<body data-bind="css: { 'hz-loaded': true }">
     <div data-bind="visible: isSending()" class="hz-page-cover"></div>
 
     <div data-bind="visible: showConsole() || !credentials()" class="container">
@@ -29,11 +29,11 @@
                 <input type="password" data-bind="textInput: password" class="form-control mr-sm-2" name="password" placeholder="Password" autocomplete="current-password">
                 <button type="submit" data-bind="disable: isSending(), click: login.bind(null, username(), password())" class="btn btn-outline-success my-2 my-sm-0">
                     <span data-bind="visible: !isSending()">Login</span>
-                    <span data-bind="visible: isSending()">Authenticating...</span>
+                    <span data-bind="visible: isSending()" class="hz-hide-on-load">Authenticating...</span>
                 </button>
             </form>
 
-            <form data-bind="visible: credentials()" class="form-inline flex-grow-1 my-2 my-lg-0">
+            <form data-bind="visible: credentials()" class="form-inline flex-grow-1 my-2 my-lg-0 hz-hide-on-load">
                 <button type="button" data-bind="click: toggleConsole.bind(null)" class="btn btn-secondary my-2 my-sm-0">
                     <span class="fas fa-clipboard-check" aria-hidden="false" title="Console"></span>
                 </button>
@@ -46,7 +46,7 @@
             </form>
         </nav>
 
-        <div data-bind="visible: credentials()">
+        <div data-bind="visible: credentials()" class="hz-hide-on-load">
             <div id="console" class="m-4 p-3 bg-dark overflow-auto hz-console">
                 <div data-bind="foreach: console">
                     <div data-bind="attr: { 'class': (colour || 'text-white') }"><span class="console-line" data-bind="text: text"></span></div>
