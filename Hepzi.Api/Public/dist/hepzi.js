@@ -38,15 +38,15 @@ var Hepzi;
 var Hepzi;
 (function (Hepzi) {
     class ArrayBufferWrapper {
-        constructor(buffer) {
+        constructor(buffer, length = null) {
             this._buffer = new Uint8Array(buffer);
-            this.length = buffer.byteLength;
+            this.length = (length || length === 0) ? length : buffer.byteLength;
             this._position = 0;
         }
         static calculateBytes(text) { return new Blob([text]).size; }
         getByte() {
-            if (this._position >= this._buffer.length) {
-                throw Error(`Buffer overrun reading byte ${this._position + 1} of ${this._buffer.length}`);
+            if (this._position >= this.length) {
+                throw Error(`Buffer overrun reading byte ${this._position + 1} of ${this.length}`);
             }
             return this._buffer[this._position++];
         }
@@ -59,10 +59,16 @@ var Hepzi;
             return value;
         }
         getHex(length) {
+            if ((this._position + (length || 0)) > this.length) {
+                throw Error(`Buffer overrun reading hex[${this._position}..${this._position + (length !== null && length !== void 0 ? length : 0)}] of ${this.length}`);
+            }
             return [...this._buffer].slice(this._position, length ? this._position + length : length)
                 .map(x => ('0' + x.toString(16)).slice(-2)).join('');
         }
         getString(length) {
+            if ((this._position + (length || 0)) > this.length) {
+                throw Error(`Buffer overrun reading hex[${this._position}..${this._position + (length !== null && length !== void 0 ? length : 0)}] of ${this.length}`);
+            }
             return ArrayBufferWrapper._decoder
                 .decode(this._buffer.slice(this._position, length ? this._position + length : length));
         }
@@ -75,13 +81,19 @@ var Hepzi;
         position() { return this._position; }
         ;
         putByte(value) {
-            if (this._position >= this._buffer.length) {
-                throw Error(`Buffer overrun writing byte ${this._position + 1} of ${this._buffer.length}`);
+            if (this._position >= this.length) {
+                throw Error(`Buffer overrun writing byte ${this._position + 1} of ${this.length}`);
             }
             this._buffer[this._position++] = value & 0xFF;
         }
+        putArray(buffer) {
+            this.putByteArray(new Uint8Array(buffer));
+        }
         putByteArray(buffer) {
-            this._buffer.set(new Uint8Array(buffer), this._position);
+            if ((this._position + buffer.length) > this.length) {
+                throw Error(`Buffer overrun writing array[0..${buffer.length}] to ${this._position + 1} of ${this.length}`);
+            }
+            this._buffer.set(buffer, this._position);
             this._position += buffer.byteLength;
         }
         putInteger(value) {
@@ -90,9 +102,7 @@ var Hepzi;
             }
         }
         putString(text) {
-            const data = ArrayBufferWrapper._encoder.encode(text);
-            this._buffer.set(data, 0);
-            this._position += data === null || data === void 0 ? void 0 : data.length;
+            this.putByteArray(ArrayBufferWrapper._encoder.encode(text));
         }
         putVector3d(vector, scale = 1) {
             this.putInteger(vector.x * scale);
@@ -367,11 +377,11 @@ var Hepzi;
             const callbacks = (this._callbacks[key] || []).slice();
             callbacks.forEach(callback => callback(data));
         }
-        on(eventName, callback) {
-            this._callbacks[eventName] = (this._callbacks[eventName] || []).concat(callback);
-        }
         off(eventName, callback) {
             this._callbacks[eventName] = (this._callbacks[eventName] || []).filter(c => c !== callback);
+        }
+        on(eventName, callback) {
+            this._callbacks[eventName] = (this._callbacks[eventName] || []).concat(callback);
         }
     }
     Hepzi.EventEmitter = EventEmitter;
@@ -385,6 +395,7 @@ var Hepzi;
             this._address = options.address || `${window.location.hostname}:${window.location.port}`;
             this._binaryType = options.binaryType || 'arraybuffer';
             this._isDebug = !!(options.isDebug);
+            this._path = ((options.path === undefined || options.path === null) ? 'client' : options.path).replace(/^\//, '');
             this._socket = null;
             this._sessionId = null;
             this._userId = null;
@@ -396,16 +407,16 @@ var Hepzi;
             if (!userId || !sessionId) {
                 throw Error('Both userId and sessionId must be supplied for connect().');
             }
-            const socketUrl = `wss://${this._address}/client`;
+            const socketUrl = `wss://${this._address}/${this._path}`;
             const socket = new WebSocket(socketUrl);
             const self = this;
             if (this._binaryType) {
                 socket.binaryType = this._binaryType;
             }
-            socket.onclose = (event) => self.emitExtended('close', event, socket, () => self.disconnect());
-            socket.onerror = (event) => self.emitExtended('error', event, socket, () => self.disconnect());
+            socket.onclose = (event) => self.emitExtended('close', event, socket, self.disconnect.bind(this));
+            socket.onerror = (event) => self.emitExtended('error', event, socket, self.disconnect.bind(this));
             socket.onmessage = (event) => self.emitExtended('message', event, socket);
-            socket.onopen = (event) => self.emitExtended('open', event, socket, () => self.onOpen());
+            socket.onopen = (event) => self.emitExtended('open', event, socket, self.onOpen.bind(this));
             this._socket = socket;
             this._sessionId = sessionId;
             this._userId = userId;
@@ -451,7 +462,7 @@ var Hepzi;
                 writer.putInteger(this._userId);
                 writer.putInteger(this._sessionId);
                 if (this._isDebug) {
-                    console.log(`Received message from client: ${buffer}`);
+                    console.debug(`Received message from client: ${buffer}`);
                 }
                 this.send(buffer);
             }
@@ -471,7 +482,7 @@ var Hepzi;
                 }
             }
             catch (error) {
-                console.log(`Error during send on websocket: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
+                console.error(`Error during send on websocket: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
             }
             return result;
         }

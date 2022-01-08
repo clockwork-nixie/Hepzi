@@ -10,13 +10,13 @@
         }
 
 
-        public on(eventName: TEventName, callback: (data: TData) => void) {
-            this._callbacks[eventName] = (this._callbacks[eventName] || []).concat(callback);
+        public off(eventName: TEventName, callback: (data: TData) => void) {
+            this._callbacks[eventName] = (this._callbacks[eventName] || []).filter(c => c !== callback);
         }
 
 
-        public off(eventName: TEventName, callback: (data: TData) => void) {
-            this._callbacks[eventName] = (this._callbacks[eventName] || []).filter(c => c !== callback);
+        public on(eventName: TEventName, callback: (data: TData) => void) {
+            this._callbacks[eventName] = (this._callbacks[eventName] || []).concat(callback);
         }
     }
 }

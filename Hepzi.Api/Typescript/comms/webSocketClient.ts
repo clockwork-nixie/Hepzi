@@ -9,13 +9,14 @@ namespace Hepzi {
         disconnect: () => void;
         on(eventName: WebSocketEventName, callback: (event: Event) => void): void;
         off(eventName: WebSocketEventName, callback: (event: Event) => void): void;
-        send: (message: ArrayBuffer | Blob | string) => void;
+        send: (message: ArrayBuffer | Blob | string) => boolean;
     }
 
     export interface IWebSocketClientOptions {
-        address?: string | null;
-        binaryType?: BinaryType | null;
-        isDebug?: boolean | null;
+        address?: string;
+        binaryType?: BinaryType;
+        isDebug?: boolean;
+        path?: string;
     }
 
 
@@ -23,6 +24,7 @@ namespace Hepzi {
         private _address: string;
         private _binaryType: BinaryType;
         private _isDebug: boolean;
+        private _path: string;
         private _socket: WebSocket | null;
         private _sessionId: number | null;
         private _userId: number | null;
@@ -36,6 +38,7 @@ namespace Hepzi {
             this._address = options.address || `${window.location.hostname}:${window.location.port}`;
             this._binaryType = options.binaryType || 'arraybuffer';
             this._isDebug = !!(options.isDebug);
+            this._path = ((options.path === undefined || options.path === null) ? 'client' : options.path).replace(/^\//, '');
             this._socket = null;
             this._sessionId = null;
             this._userId = null;
@@ -51,7 +54,7 @@ namespace Hepzi {
                 throw Error('Both userId and sessionId must be supplied for connect().');
             }
 
-            const socketUrl = `wss://${this._address}/client`;
+            const socketUrl = `wss://${this._address}/${this._path}`;
             const socket = new WebSocket(socketUrl);
             const self = this;
 
@@ -59,10 +62,10 @@ namespace Hepzi {
                 socket.binaryType = this._binaryType;
             }
 
-            socket.onclose = (event: Event) => self.emitExtended('close', event, socket, () => self.disconnect());
-            socket.onerror = (event: Event) => self.emitExtended('error', event, socket, () => self.disconnect());
+            socket.onclose = (event: Event) => self.emitExtended('close', event, socket, self.disconnect.bind(this));
+            socket.onerror = (event: Event) => self.emitExtended('error', event, socket, self.disconnect.bind(this));
             socket.onmessage = (event: Event) => self.emitExtended('message', event, socket); 
-            socket.onopen = (event: Event) => self.emitExtended('open', event, socket, () => self.onOpen());
+            socket.onopen = (event: Event) => self.emitExtended('open', event, socket, self.onOpen.bind(this));
 
             this._socket = socket;
             this._sessionId = sessionId;
@@ -86,7 +89,7 @@ namespace Hepzi {
         }
 
 
-        private emitExtended(eventName: WebSocketEventName, event: Event, socket: WebSocket, callback?: (() => void) | null) {
+        private emitExtended(eventName: WebSocketEventName, event: Event, socket: WebSocket, callback?: () => void) {
             if (socket && socket === this._socket) {
                 if (this._isDebug && callback) {
                     console.debug(`"${eventName}" event raised for current web-socket: running direct callback.`);
@@ -117,15 +120,15 @@ namespace Hepzi {
                 writer.putInteger(this._sessionId);
 
                 if (this._isDebug) {
-                    console.log(`Received message from client: ${buffer}`);
+                    console.debug(`Received message from client: ${buffer}`);
                 }
                 this.send(buffer);
             }
         }
 
 
-        public send(message: ArrayBuffer | Blob | string): Boolean {
-            let result: Boolean = false;
+        public send(message: ArrayBuffer | Blob | string): boolean {
+            let result: boolean = false;
 
             try {
                 if (this._socket) {
@@ -138,7 +141,7 @@ namespace Hepzi {
                     console.debug('Send on non-open socket: ignored.');
                 }
             } catch (error: any) {
-                console.log(`Error during send on websocket: ${error?.message || error}`)
+                console.error(`Error during send on websocket: ${error?.message || error}`)
             }
 
             return result;
