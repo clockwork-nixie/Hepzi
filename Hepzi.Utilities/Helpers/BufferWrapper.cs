@@ -1,4 +1,6 @@
-﻿namespace Hepzi.Utilities.Helpers
+﻿using Hepzi.Utilities.Models;
+
+namespace Hepzi.Utilities.Helpers
 {
     public struct BufferWrapper
     {
@@ -25,7 +27,17 @@
 
             return value;
         }
-        
+
+
+        public Vector3d ReadVector3d()
+        {
+            var x = ReadInt();
+            var y = ReadInt();
+            var z = ReadInt();
+
+            return new Vector3d(x, y, z);
+        }
+
 
         public BufferWrapper Skip(int count = 1)
         {
@@ -48,6 +60,14 @@
             }
 
             return value;
+        }
+
+
+        public void WriteVector3d(Vector3d vector)
+        {
+            WriteInt(vector.X);
+            WriteInt(vector.Y);
+            WriteInt(vector.Z);
         }
     }
 }

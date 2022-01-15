@@ -21,6 +21,7 @@ namespace Hepzi.Application.Models
         }
 
 
+        public AutoResetEvent ActionsReady { get; } = new(true);
         public CancellationToken Cancellation => _cancellation.Token;
         public int SessionId { get; private set; }
         public TData State { get; }

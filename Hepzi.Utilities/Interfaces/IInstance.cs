@@ -9,7 +9,7 @@ namespace Hepzi.Utilities.Interfaces
         TimeSpan ConnectionTimeout { get; }
 
         SessionWelcome? AddSession(Session<TData> session, object token);
-        bool ProcessClientRequest(ISession user, ArraySegment<byte> data, object token);
+        bool ProcessClientRequest(Session<TData> user, ArraySegment<byte> data, object token);
         void RemoveSession(ISession session, object token);
     }
 }

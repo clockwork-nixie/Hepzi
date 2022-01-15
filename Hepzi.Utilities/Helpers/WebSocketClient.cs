@@ -18,11 +18,13 @@ namespace Hepzi.Utilities.Helpers
         {
             public ThreadState(SessionWelcome welcome)
             {
+                ActionsReady = welcome.Session.ActionsReady;
                 Cancellation = welcome.Session.Cancellation;
                 Outbounds = welcome.GetActions();
                 UserId = welcome.Session.UserId;
             }
 
+            public AutoResetEvent ActionsReady { get; }
             public CancellationToken Cancellation { get; }
             public ISessionAction Outbounds { get; }
             public int UserId { get; }
@@ -186,7 +188,7 @@ namespace Hepzi.Utilities.Helpers
 
                                 // The wait implements a timeout after client-kill to allow the socket to drain.
                                 // Once the client closes the socket the session will drop, but if the client
-                                // refuses to die we close after a timeout anyway (to prevent Agent Smit situations).
+                                // refuses to die we close after a timeout anyway (to prevent Agent Smith situations).
                                 if (inputLength < 0 || !_run.Wait(TimeSpan.FromSeconds(10), session.Cancellation))
                                 {
                                     break;
@@ -208,20 +210,29 @@ namespace Hepzi.Utilities.Helpers
                         }
                         finally
                         {
-                            // TODO: make more robust
+                            stage = "cancelling session";
                             if (!session.Cancellation.IsCancellationRequested)
                             {
                                 session.Cancel();
                             }
-                             
+
+                            try
+                            {
+                                stage = "waiting for outbound worker to join";
+                                if (_outboundThread != null && _outboundThread.ThreadState != System.Threading.ThreadState.Unstarted)
+                                {
+                                    _outboundThread.Join();
+                                }
+                            }
+                            catch (Exception joinException)
+                            {
+                                Logger.Warn(joinException, $"Failed to join outbound thread {_outboundThread?.Name}");
+                            }
+
+                            stage = "leaving instance";
                             if (welcome?.Token != null)
                             {
                                 session.LeaveInstance(welcome.Token);
-                            }
-
-                            if (_outboundThread != null)
-                            {
-                                _outboundThread.Join();
                             }
                         }
                     }
@@ -244,29 +255,31 @@ namespace Hepzi.Utilities.Helpers
                 {
                     var outbounds = state.Outbounds;
                     var cancellation = state.Cancellation;
+                    var waitHandles = new[] { cancellation.WaitHandle, state.ActionsReady };
 
                     while (!cancellation.IsCancellationRequested && _socket.State == WebSocketState.Open)
                     {
-                        // TODO: rework to optimise traffic.
                         while (outbounds.Next != null)
                         {
                             outbounds = outbounds.Next;
 
-                            if (outbounds.TargetUserId == null || outbounds.TargetUserId == state.UserId)
+                            if (outbounds.TargetUserId == state.UserId || (outbounds.TargetUserId == null && outbounds.ExcludeUserId != state.UserId))
                             {
-                                if (outbounds.IsTerminal)
-                                {
-                                    _run.Reset();
-                                }
-
                                 if (outbounds.Buffer.Length > 0)
                                 {
                                     await _socket.SendAsync(outbounds.Buffer, WebSocketMessageType.Binary, true, cancellation);
                                 }
+
+                                if (outbounds.IsTerminal)
+                                {
+                                    // TODO: LOG
+                                    _run.Reset();
+                                    return;
+                                }
                             }
                         }
 
-                        Thread.Sleep(50);
+                        WaitHandle.WaitAny(waitHandles);
                     }
                 }
                 catch (OperationCanceledException)

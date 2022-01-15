@@ -1,41 +1,91 @@
 (function (ko) {
+    var factory = Hepzi.Factory.instance;
+    var configuration = factory.getConfiguration();
+    var applicationClient;
+    var isConnecting = false;
+
+    factory.debug('ApplicationClient');
+    factory.debug('ClientResponseParser');
+    factory.debug('InputHandler');
+    factory.debug('SceneManager');
+        
     ko.options.useOnlyNativeEvents = true;
 
 
     function addConsoleLine(data) {
-        if (applicationModel.console().length > 100) { // TODO: configuration
-            applicationModel.console.shift();
-        }
-        applicationModel.console.push(data);
+        var console = applicationModel.console;
 
-        window.setTimeout(() => {
-            var consoleElements = document.getElementById("console").getElementsByClassName('console-line');
+        console.push(data);
+        console.splice(0, console().length - configuration.consoleLines);
 
-            if (consoleElements.length) {
-                console.log(consoleElements[consoleElements.length - 1]);
-                consoleElements[consoleElements.length - 1].scrollIntoView();
+        window.setTimeout(function () {
+            var element = document.getElementById('console');
+            var lines = element? element.getElementsByClassName('console-line'): null;
+
+            if (lines && lines.length) {
+                lines[lines.length - 1].scrollIntoView();
             }
-        }, 100);
+        }, configuration.consoleScrollDelayMilliseconds);
+    }
+
+
+    function addToast(text, title) {
+        var $template = $('#toast-template');
+
+        if ($template) {
+            $toast = $template.clone();
+            $template.parent().prepend($toast);
+
+            if (title) {
+                $toast.find('.toast-header strong').text(title);
+            }
+            $toast.find('.toast-body').text(text);
+            $toast.toast('show');
+            $toast.on('hidden.bs.toast', function() {
+                $toast.toast('dispose');
+                $toast.remove();
+            });
+        }
+    }
+
+
+    function applyTarget(target) {
+        console.debug(`TARGET: ${target && target.name ? target.name : '<no-one>'}`);
+        applicationModel.target(target);
+        addToast(`${target && target.name ? target.name : '<no-one>'}`, 'Target');
     }
 
 
     function createClient() {
-        var client = applicationModel.client = new Hepzi.ApplicationClient(
-            applicationModel.credentials().userId,
-            new Hepzi.WebSocketClient({ isDebug: true }),
-            { isDebug: true });
-
+        isConnecting = false;
         applicationModel.console([]);
+        applicationModel.showConsole(false);
 
-        applicationModel.client.on('close', () => { if (applicationModel.client == client) { applicationModel.logout(); }});
-        applicationModel.client.on('kicked', () => { if (applicationModel.client == client) { applicationModel.logout(); }});
-        applicationModel.client.on('message', data => { if (applicationModel.client == client) { addConsoleLine(data); }});
-        applicationModel.client.connect(applicationModel.credentials().sessionId);
+        var thisClient = applicationClient = factory.createApplicationClient(applicationModel.credentials().userId);
+
+        thisClient.on('close', function () { if (applicationClient == thisClient) { applicationModel.logout(); } });
+        thisClient.on('console', function () { if (applicationClient == thisClient) { applicationModel.toggleConsole(); } });
+        thisClient.on('message', function (data) { if (applicationClient == thisClient) { addConsoleLine(data); } });
+        thisClient.on('target', function (target) { if (applicationClient == thisClient) { applyTarget(target); } });
+
+        isConnecting = true;
+        thisClient.connect(applicationModel.credentials().sessionId);
     }
 
 
-    function login(username, password, model) {
+    function interpretCommand(model) {
+        if (applicationClient) {
+            applicationClient.interpretCommand((model.command() || '').trim())
+            model.command('');
+        }
+    }
+
+
+    function login(model) {
         if (!model.isSending()) {
+            var username = model.username().trim();
+            var password = model.password();
+
             model.credentials(null);
 
             if (username && password) {
@@ -54,35 +104,35 @@
                                         if (credentials && credentials.username && credentials.userId && credentials.sessionId) {
                                             model.credentials(credentials);
                                             createClient();
-                                            window.setTimeout(function () { document.getElementById('command').focus(); }, 0);
                                             model.isSending(false);
+                                            window.setTimeout(function () { document.getElementById('canvas').focus(); }, 1000);
                                         } else {
                                             model.isSending(false);
-                                            alert('Invalid response from server');
+                                            addToast('Invalid response from server');
                                         }
                                     })
                                     .catch(function (err) {
                                         console.log(err);
                                         model.isSending(false);
-                                        alert('Something went wrong creating connection to server.');
+                                        addToast('Something went wrong creating connection to server.');
                                     });
                                 break;
 
                             case 401:
                                 model.isSending(false);
-                                alert('Username or password is incorrect.');
+                                addToast('Username or password is incorrect.');
                                 break;
 
                             default:
                                 model.isSending(false);
-                                alert('HTTP Error (Status Code: ' + response.status + ")");
+                                addToast('HTTP Error (Status Code: ' + response.status + ")");
                                 break;
                         }
                     })
                     .catch(function (err) {
                         model.isSending(false);
                         console.log(err);
-                        alert('Failed to connect to login server.');
+                        addToast('Failed to connect to login server.');
                     });
             }
         }
@@ -90,35 +140,36 @@
 
 
     function logout(model) {
+        console.log('Logging out ...');
+
+        if (isConnecting) {
+            addToast('Unexpected disconnect');
+            isConnecting = false;
+        }
+
         if (model.credentials()) {
             model.credentials(null);
         }
 
-        if (model.client) {
-            model.client.disconnect();
-            model.client = null;
-        }
-    }
-
-
-    function sendCommand(model) {
-        if (model.client) {
-            model.client.interpretCommand((model.command() || '').trim())
-            model.command('');
+        if (applicationClient) {
+            applicationClient.disconnect();
+            applicationClient = null;
         }
     }
 
 
     var applicationModel = {
-        client: null,
         command: ko.observable(),
         console: ko.observableArray([]),
         credentials: ko.observable(),
+        interpretCommand: function () { interpretCommand(applicationModel); },
         isSending: ko.observable(false),
-        login: (username, password) => login(username.trim(), password, applicationModel),
-        logout: () => logout(applicationModel),
-        send: () => sendCommand(applicationModel),
+        login: function () { login(applicationModel); },
+        logout: function () { logout(applicationModel); },
         password: ko.observable(),
+        showConsole: ko.observable(false),
+        target: ko.observable(),
+        toggleConsole: function () { applicationModel.showConsole(!applicationModel.showConsole()) },
         username: ko.observable()        
     };
 

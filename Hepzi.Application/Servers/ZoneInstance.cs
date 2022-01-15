@@ -13,15 +13,30 @@ namespace Hepzi.Application.Servers
     public class ZoneInstance : IZoneInstance
     {
         private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
-        private readonly SessionActions _actions = new();
+        private readonly SessionActions _actions;
         private readonly object _instanceSessionLock = new();
+        private readonly Random _random = new();
         private readonly ConcurrentDictionary<int, Session<ZoneSessionState>> _roster = new();
+        private readonly Vector3d _spawnPoint = new();
+
+
+        public ZoneInstance()
+        {
+            _actions = new(() => _roster.Values);
+            _actions.StartWorker();
+        }
 
 
         public SessionWelcome? AddSession(Session<ZoneSessionState> session, object token)
         {
             ISessionAction actions;
-            var initialAction = session.AddInstanceSession();
+
+            var state = session.State;
+            
+            state.Position = _spawnPoint + new Vector3d(_random.Next(200) - 100, _random.Next(100), _random.Next(200) - 100);
+            state.Direction = _spawnPoint.IsZero? new(1, 0 , 0): -_spawnPoint;
+
+            state.Direction.Normalise(100);
 
             lock (_instanceSessionLock)
             {
@@ -29,12 +44,14 @@ namespace Hepzi.Application.Servers
                 {
                     Terminate(existing);
                 }
-                _actions.AddAction(initialAction);
-
                 var currentAction = _actions.Current;
-                var sessions = _roster.Values.Select(s => (ISession)s).ToArray();
-
+                var sessions = _roster.Values.ToArray();
+               
+                // This places the "add" action at the head of the chain which makes it the first
+                // action that will be actions by the new user: but we exclude it from that user :)
+                _actions.AddAction(session.AddInstanceSession(), excludeUserId: session.UserId);
                 actions = InitialSessionAction.BuildInitialActionChain(session, sessions, currentAction);
+
                 _roster[session.UserId] = session;
             }
 
@@ -49,23 +66,28 @@ namespace Hepzi.Application.Servers
         public TimeSpan ConnectionTimeout => TimeSpan.FromSeconds(20); // TODO: settings
 
 
-        public bool ProcessClientRequest(ISession session, ArraySegment<byte> data, object token)
+        public void Dispose() => _actions.Dispose();
+
+
+        public bool ProcessClientRequest(Session<ZoneSessionState> session, ArraySegment<byte> data, object token)
         {
             var result = false;
+            ClientRequestType? command = null;
 
-            if (session.HasToken(token))
+            try
             {
-                if (data.Count == 0)
+                if (session.HasToken(token))
                 {
-                    _actions.AddAction(session.Heartbeat(), session.UserId);
-                }
-                else
-                {
-                    var buffer = new BufferWrapper(data);
-                    var command = (ClientRequestType)buffer.Read();
-
-                    try
+                    if (data.Count == 0)
                     {
+                        _actions.AddAction(session.Heartbeat(), session.UserId);
+                    }
+                    else
+                    {
+                        var buffer = new BufferWrapper(data);
+                        
+                        command = (ClientRequestType)buffer.Read();
+
                         switch (command)
                         {
                             case ClientRequestType.InstanceMessage:
@@ -76,16 +98,26 @@ namespace Hepzi.Application.Servers
                                 _actions.AddAction(session.KickClient(), buffer.ReadInt(), true);
                                 break;
 
+                            case ClientRequestType.MoveClient:
+                                var position = buffer.ReadVector3d();
+                                var direction = buffer.ReadVector3d();
+
+                                session.State.Position = position;
+                                session.State.Direction = direction;
+
+                                _actions.AddAction(session.MoveClient(), excludeUserId: session.UserId);
+                                break;
+
                             default:
                                 break;
                         }
                     }
-                    catch (Exception exception)
-                    { 
-                        // TODO: log error
-                    }
+                    result = true;
                 }
-                result = true;
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(exception, $"In {nameof(ProcessClientRequest)} processing '{command}' ({data.Count} bytes) for user #{session?.UserId}");
             }
 
             return result;
@@ -105,6 +137,6 @@ namespace Hepzi.Application.Servers
         }
 
 
-        private void Terminate(Session<ZoneSessionState> session) => _actions.AddAction(session.RemoveInstanceSession());
+        private void Terminate(Session<ZoneSessionState> session) => _actions.AddAction(session.RemoveInstanceSession(), excludeUserId: session.UserId);
     }
 }

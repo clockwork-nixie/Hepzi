@@ -40,6 +40,11 @@
         /// <summary>
         /// Terminate the client.
         /// </summary>
-        KickClient = 0x7
+        KickClient = 0x7,
+
+        /// <summary>
+        /// Update client position and direction
+        /// </summary>
+        MoveClient = 0x8
     }
 }

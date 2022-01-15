@@ -2,11 +2,11 @@
 {
     public interface ISession
     {
+        AutoResetEvent ActionsReady { get; }
         CancellationToken Cancellation { get; }
         int SessionId { get; }
         int UserId { get; }
         string Username { get; }
-
 
         void Cancel();
         bool HasToken(object token);
