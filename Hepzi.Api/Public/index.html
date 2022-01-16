@@ -19,7 +19,7 @@
     <![endif]-->
 </head>
 
-<body data-bind="css: { 'hz-loaded': true }">
+<body data-bind="css: { 'hz-loaded': true }" class="p-0 m-0 border-0">
     <div data-bind="visible: isSending()" class="hz-page-cover"></div>
 
     <div data-bind="visible: showConsole() || !credentials()" class="container">
@@ -52,18 +52,15 @@
                     <div data-bind="attr: { 'class': (colour || 'text-white') }"><span class="console-line" data-bind="text: text"></span></div>
                 </div>
             </div>
-            <form class="form-inline mx-4">
+            <form class="form-inline mx-4" data-bind="submit: interpretCommand.bind(null)">
                 <div class="input-group mb-3 w-75">
-                    <div class="input-group-prepend">
-                        <button type="submit" data-bind="click: interpretCommand.bind(null)" class="btn btn-outline-info mr-sm-2">Send</button>
-                    </div>
                     <input id="command" type="text" data-bind="textInput: command" class="form-control w-50" name="command" placeholder="Command">
                 </div>
             </form>
         </div>
     </div>
 
-    <div data-bind="visible: credentials() && !showConsole()" class="p-0 m-0 hz-hide-on-load">
+    <div data-bind="visible: credentials() && !showConsole()" class="p-0 m-0 border-0 hz-hide-on-load" style="height:100%">
         <canvas id="canvas" class="hz-canvas"></canvas>
         <div data-bind="visible: target() && target().name" class="hz-target m-2">
             <span class="text-danger">Target: &nbsp;</span>

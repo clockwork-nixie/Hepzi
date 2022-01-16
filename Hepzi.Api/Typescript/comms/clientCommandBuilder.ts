@@ -1,6 +1,4 @@
-﻿/// <reference path="../gui/avatar.ts" />
-/// <reference path="../utilities/arrayBufferWrapper.ts" />
-/// <reference path="./clientRequestType.ts" />
+﻿/// <reference path="../utilities/arrayBufferWrapper.ts" />
 
 namespace Hepzi {
     export class ClientCommandBuilder {

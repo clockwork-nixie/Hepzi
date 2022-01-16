@@ -1,8 +1,19 @@
 ﻿/// <reference path="../comms/clientCommandInterpreter.ts" />
-/// <reference path="./eventEmitter.ts" />
+/// <reference path="../utilities/eventEmitter.ts" />
 
 namespace Hepzi {
     export type ApplicationClientEventName = 'close' | 'connected' | 'console' | 'error' | 'message' | 'target';
+
+
+    export class ConsoleEntry {
+        constructor(text: string, colour?: string) {
+            this.text = text;
+            this.colour = colour;
+        }
+
+        public readonly text: string;
+        public readonly colour?: string;
+    }
 
 
     export class ApplicationClient extends EventEmitter<ApplicationClientEventName, any> {
@@ -59,7 +70,7 @@ namespace Hepzi {
         }
 
 
-        private disconnect(): void {
+        public disconnect(): void {
             if (this._isDebug) {
                 console.debug(`DEBUG: ApplicationClient disconnecting if connected.`);
             }
@@ -80,10 +91,8 @@ namespace Hepzi {
 
                 if (result.message && (this._isDebug || (result.category !== ClientCategory.Debug && result.category !== ClientCategory.Error))) {
                     ((typeof result.message === 'string' || result.message instanceof String) ? [result.message]: result.message)
-                        .forEach(message => this.emit('message', {
-                            text: message,
-                            colour: result.category == ClientCategory.Error ? 'text-danger' : 'text-secondary'
-                        }));
+                        .forEach(message => this.emit('message', new ConsoleEntry(message as string,
+                            result.category == ClientCategory.Error ? 'text-danger' : 'text-secondary')));
                 }
 
                 if (result.buffer) {
@@ -108,7 +117,7 @@ namespace Hepzi {
                 if (result.message && (this._isDebug || (
                     result.category !== ClientCategory.Debug &&
                     result.category !== ClientCategory.Error))) {
-                    this.emit('message', { text: result.message, colour: result.determineTextColourClass() });
+                    this.emit('message', new ConsoleEntry(result.message, result.determineTextColourClass()));
                 }
 
                 if (result.category !== ClientCategory.Error) {

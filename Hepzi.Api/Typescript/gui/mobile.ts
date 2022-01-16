@@ -1,5 +1,3 @@
-/// <reference path="../external/babylon.module.d.ts"/>
-
 namespace Hepzi {
     export class Mobile {
         constructor(name: string) {

@@ -1,6 +1,4 @@
-﻿/// <reference path="../external/babylon.module.d.ts"/>
-
-namespace Hepzi {
+﻿namespace Hepzi {
     export class HepziModel {
         mobile?: Mobile;
     }

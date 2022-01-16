@@ -1,5 +1,4 @@
-/// <reference path="../external/babylon.module.d.ts"/>
-/// <reference path="./mobile.ts"/>
+/// <reference path="../gui/mobile.ts"/>
 
 namespace Hepzi {
     export class Avatar extends Mobile {

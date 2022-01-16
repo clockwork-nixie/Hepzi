@@ -3,6 +3,7 @@
     "target": "ES2015",
     "module": "System",
     "strict": true,
+    "noImplicitAny": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,

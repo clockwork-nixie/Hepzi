@@ -33,8 +33,8 @@ namespace Hepzi.Application.Servers
 
             var state = session.State;
             
-            state.Position = _spawnPoint + new Vector3d(_random.Next(200) - 100, _random.Next(100), _random.Next(200) - 100);
-            state.Direction = _spawnPoint.IsZero? new(1, 0 , 0): -_spawnPoint;
+            state.Position = _spawnPoint + new Vector3d(_random.Next(800) - 400, _random.Next(800) + 200, _random.Next(800) - 400);
+            state.Direction = _spawnPoint.IsZero? new(1, 0 , 0): -state.Position;
 
             state.Direction.Normalise(100);
 

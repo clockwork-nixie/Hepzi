@@ -1,19 +1,36 @@
+html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+}
 body {
+    height: 100%;
     overflow: hidden;
 }
 body:not(.hz-loaded) .hz-hide-on-load {
     display: none;
 }
 .hz-canvas {
+    height: 100%;
     position: relative;
     min-height: 100px;
     min-width: 100px;
     width: 100%;
+    border-width: 0;
     margin: 0;
     padding: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: 0;
+    z-index: 1;
 }
 .hz-console {
     height: 600px;
+}
+.hz-hidden {
+    display: none;
 }
 .hz-page-cover {
     position: fixed;
@@ -31,7 +48,7 @@ body:not(.hz-loaded) .hz-hide-on-load {
     position: absolute;
     top: 0;
     left: 0;
-    z-index: 1;
+    z-index: 2;
 }
 .hz-toast-container {
     position: absolute;
@@ -40,4 +57,4 @@ body:not(.hz-loaded) .hz-hide-on-load {
 }
 .hz-toast {
     min-width: 250px;
- }
+}

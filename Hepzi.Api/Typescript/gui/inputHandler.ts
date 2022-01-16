@@ -1,5 +1,4 @@
-﻿/// <reference path="../external/babylon.module.d.ts"/>
-/// <reference path="../utilities/eventEmitter.ts" />
+﻿/// <reference path="../utilities/eventEmitter.ts" />
 
 namespace Hepzi {
     export type InputEventName = 'console' | 'escape' | 'target';
@@ -22,7 +21,9 @@ namespace Hepzi {
         public handleKey(keyInfo: BABYLON.KeyboardInfo): void {
             switch (keyInfo.type) {
                 case BABYLON.KeyboardEventTypes.KEYDOWN:
-                    console.debug("KEY DOWN: ", keyInfo.event.key, keyInfo.event.code, keyInfo.event.shiftKey);
+                    if (this._isDebug) {
+                        console.debug("KEY DOWN: ", keyInfo.event.key, keyInfo.event.code, keyInfo.event.shiftKey);
+                    }
 
                     switch (keyInfo.event.key) {
                         case '`':
@@ -36,7 +37,9 @@ namespace Hepzi {
                     break;
 
                 case BABYLON.KeyboardEventTypes.KEYUP:
-                    console.debug("KEY UP: ", keyInfo.event.key, keyInfo.event.code, keyInfo.event.shiftKey);
+                    if (this._isDebug) {
+                        console.debug("KEY UP: ", keyInfo.event.key, keyInfo.event.code, keyInfo.event.shiftKey);
+                    }
                     break;
             }
         }

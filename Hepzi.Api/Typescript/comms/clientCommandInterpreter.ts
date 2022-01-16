@@ -1,8 +1,5 @@
-﻿/// <reference path="../gui/avatar.ts" />
+﻿/// <reference path="../comms/clientCommandBuilder.ts" />
 /// <reference path="../utilities/arrayBufferWrapper.ts" />
-/// <reference path="./clientCategory.ts" />
-/// <reference path="./clientCommandBuilder.ts" />
-/// <reference path="./clientRequestType.ts" />
 
 namespace Hepzi {
     export class ClientCommandInterpreter {

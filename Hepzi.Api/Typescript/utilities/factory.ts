@@ -3,9 +3,10 @@
 /// <reference path="../gui/avatar.ts" />
 /// <reference path="../gui/inputHandler.ts" />
 /// <reference path="../gui/sceneManager.ts" />
-/// <reference path="./applicationClient.ts" />
-/// <reference path="./applicationContext.ts" />
-/// <reference path="./configuration.ts" />
+/// <reference path="../ui/applicationModel.ts" />
+/// <reference path="../ui/applicationClient.ts" />
+/// <reference path="../ui/applicationContext.ts" />
+/// <reference path="../utilities/configuration.ts" />
 
 namespace Hepzi {
     export interface IFactory {
@@ -18,6 +19,7 @@ namespace Hepzi {
 
         debug(className: string): void;
 
+        getApplicationModel(): ApplicationModel;
         getClientResponseParser(): ClientResponseParser;
         getConfiguration(): Readonly<IConfiguration>;
 
@@ -26,10 +28,10 @@ namespace Hepzi {
 
 
     export class Factory implements IFactory {
+        private _applicationModel?: ApplicationModel;
         private _clientResponseParser?: ClientResponseParser;
         private _configuration?: Readonly<IConfiguration>;
         private readonly _debugClasses: { [index: string]: boolean } = {};
-
 
         public createApplicationClient(userId: number): ApplicationClient { return new ApplicationClient(this, userId); }
         public createApplicationContext(protagonist: Avatar): ApplicationContext { return new ApplicationContext(this, protagonist); }
@@ -38,8 +40,9 @@ namespace Hepzi {
         public createSceneManager(canvasName: string, inputHandler: InputHandler): SceneManager { return new SceneManager(this, canvasName, inputHandler); }
         public createWebSocketClient(options?: IWebSocketClientOptions): WebSocketClient { return new WebSocketClient({ ...options, isDebug: this.isDebug('WebSocketClient') || options?.isDebug }); }
 
-        public debug(className: string): void { this._debugClasses[className] = true; }
+        public debug(...classNames: string[]): void { const self = this; classNames.forEach(className => self._debugClasses[className] = true); }
 
+        public getApplicationModel(): ApplicationModel { return this._applicationModel ?? (this._applicationModel = new ApplicationModel(this, window.ko, window.jQuery)); }
         public getClientResponseParser(): ClientResponseParser { return this._clientResponseParser ?? (this._clientResponseParser = new ClientResponseParser(this)); }
         public getConfiguration(): Readonly<IConfiguration> { return this._configuration ?? (this._configuration = new Configuration()); }
 

@@ -260,76 +260,6 @@ var Hepzi;
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
-    class Mobile {
-        constructor(name) {
-            this.isDebug = false;
-            this.direction = new BABYLON.Vector3();
-            this.mesh = null;
-            this.name = name;
-            this.position = new BABYLON.Vector3();
-        }
-        setMeshRotationFromDirection() {
-            const mesh = this.mesh;
-            if (mesh) {
-                const direction = this.direction;
-                if (direction.x || direction.y || direction.z) {
-                    this.direction.normalize();
-                }
-                else {
-                    this.direction.x = 1;
-                }
-                const rotationQuaternion = BABYLON.Quaternion.FromEulerVector(this.direction);
-                mesh.rotationQuaternion = rotationQuaternion;
-            }
-        }
-    }
-    Hepzi.Mobile = Mobile;
-})(Hepzi || (Hepzi = {}));
-var Hepzi;
-(function (Hepzi) {
-    class Avatar extends Hepzi.Mobile {
-        constructor(username, isProtagonist, userId, position, direction) {
-            super(username);
-            this.isProtagonist = isProtagonist;
-            this.userId = userId;
-            this.direction.copyFrom(direction);
-            this.position.copyFrom(position);
-            this._lastDirection = new BABYLON.Vector3();
-            this._lastPosition = new BABYLON.Vector3();
-            this.updateLastPositionAndDirection();
-        }
-        hasPositionOrDirectionChanged() {
-            return !(this._lastDirection.equals(this.direction) && this._lastPosition.equals(this.position));
-        }
-        setMeshRotationFromDirection() {
-            const mesh = this.mesh;
-            if (mesh) {
-                const direction = this.direction;
-                if (direction.x || direction.y || direction.z) {
-                    this.direction.normalize();
-                }
-                else {
-                    this.direction.x = 1;
-                }
-                if (this.isDebug) {
-                    console.debug(`Avatar #${this.userId} before rotation is: ${mesh.rotationQuaternion}`);
-                }
-                const rotationQuaternion = BABYLON.Quaternion.FromEulerVector(this.direction);
-                mesh.rotationQuaternion = rotationQuaternion;
-                if (this.isDebug) {
-                    console.debug(`Avatar #${this.userId} after rotation is: ${mesh.rotationQuaternion}`);
-                }
-            }
-        }
-        updateLastPositionAndDirection() {
-            this._lastDirection.copyFrom(this.direction);
-            this._lastPosition.copyFrom(this.position);
-        }
-    }
-    Hepzi.Avatar = Avatar;
-})(Hepzi || (Hepzi = {}));
-var Hepzi;
-(function (Hepzi) {
     class ArrayBufferWrapper {
         constructor(buffer) {
             this._buffer = new Uint8Array(buffer);
@@ -408,16 +338,6 @@ var Hepzi;
     ArrayBufferWrapper._decoder = new TextDecoder();
     ArrayBufferWrapper._encoder = new TextEncoder();
     Hepzi.ArrayBufferWrapper = ArrayBufferWrapper;
-})(Hepzi || (Hepzi = {}));
-var Hepzi;
-(function (Hepzi) {
-    let ClientRequestType;
-    (function (ClientRequestType) {
-        ClientRequestType[ClientRequestType["Unknown"] = 0] = "Unknown";
-        ClientRequestType[ClientRequestType["InstanceMessage"] = 1] = "InstanceMessage";
-        ClientRequestType[ClientRequestType["KickClient"] = 2] = "KickClient";
-        ClientRequestType[ClientRequestType["MoveClient"] = 3] = "MoveClient";
-    })(ClientRequestType = Hepzi.ClientRequestType || (Hepzi.ClientRequestType = {}));
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
@@ -525,18 +445,13 @@ var Hepzi;
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
-    let ClientResponseType;
-    (function (ClientResponseType) {
-        ClientResponseType[ClientResponseType["Unknown"] = 0] = "Unknown";
-        ClientResponseType[ClientResponseType["Welcome"] = 1] = "Welcome";
-        ClientResponseType[ClientResponseType["Heartbeat"] = 2] = "Heartbeat";
-        ClientResponseType[ClientResponseType["InitialInstanceSession"] = 3] = "InitialInstanceSession";
-        ClientResponseType[ClientResponseType["AddInstanceSession"] = 4] = "AddInstanceSession";
-        ClientResponseType[ClientResponseType["RemoveInstanceSession"] = 5] = "RemoveInstanceSession";
-        ClientResponseType[ClientResponseType["InstanceMessage"] = 6] = "InstanceMessage";
-        ClientResponseType[ClientResponseType["KickClient"] = 7] = "KickClient";
-        ClientResponseType[ClientResponseType["MoveClient"] = 8] = "MoveClient";
-    })(ClientResponseType = Hepzi.ClientResponseType || (Hepzi.ClientResponseType = {}));
+    let ClientRequestType;
+    (function (ClientRequestType) {
+        ClientRequestType[ClientRequestType["Unknown"] = 0] = "Unknown";
+        ClientRequestType[ClientRequestType["InstanceMessage"] = 1] = "InstanceMessage";
+        ClientRequestType[ClientRequestType["KickClient"] = 2] = "KickClient";
+        ClientRequestType[ClientRequestType["MoveClient"] = 3] = "MoveClient";
+    })(ClientRequestType = Hepzi.ClientRequestType || (Hepzi.ClientRequestType = {}));
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
@@ -567,6 +482,76 @@ var Hepzi;
         }
     }
     Hepzi.ClientResponse = ClientResponse;
+})(Hepzi || (Hepzi = {}));
+var Hepzi;
+(function (Hepzi) {
+    class Mobile {
+        constructor(name) {
+            this.isDebug = false;
+            this.direction = new BABYLON.Vector3();
+            this.mesh = null;
+            this.name = name;
+            this.position = new BABYLON.Vector3();
+        }
+        setMeshRotationFromDirection() {
+            const mesh = this.mesh;
+            if (mesh) {
+                const direction = this.direction;
+                if (direction.x || direction.y || direction.z) {
+                    this.direction.normalize();
+                }
+                else {
+                    this.direction.x = 1;
+                }
+                const rotationQuaternion = BABYLON.Quaternion.FromEulerVector(this.direction);
+                mesh.rotationQuaternion = rotationQuaternion;
+            }
+        }
+    }
+    Hepzi.Mobile = Mobile;
+})(Hepzi || (Hepzi = {}));
+var Hepzi;
+(function (Hepzi) {
+    class Avatar extends Hepzi.Mobile {
+        constructor(username, isProtagonist, userId, position, direction) {
+            super(username);
+            this.isProtagonist = isProtagonist;
+            this.userId = userId;
+            this.direction.copyFrom(direction);
+            this.position.copyFrom(position);
+            this._lastDirection = new BABYLON.Vector3();
+            this._lastPosition = new BABYLON.Vector3();
+            this.updateLastPositionAndDirection();
+        }
+        hasPositionOrDirectionChanged() {
+            return !(this._lastDirection.equals(this.direction) && this._lastPosition.equals(this.position));
+        }
+        setMeshRotationFromDirection() {
+            const mesh = this.mesh;
+            if (mesh) {
+                const direction = this.direction;
+                if (direction.x || direction.y || direction.z) {
+                    this.direction.normalize();
+                }
+                else {
+                    this.direction.x = 1;
+                }
+                if (this.isDebug) {
+                    console.debug(`Avatar #${this.userId} before rotation is: ${mesh.rotationQuaternion}`);
+                }
+                const rotationQuaternion = BABYLON.Quaternion.FromEulerVector(this.direction);
+                mesh.rotationQuaternion = rotationQuaternion;
+                if (this.isDebug) {
+                    console.debug(`Avatar #${this.userId} after rotation is: ${mesh.rotationQuaternion}`);
+                }
+            }
+        }
+        updateLastPositionAndDirection() {
+            this._lastDirection.copyFrom(this.direction);
+            this._lastPosition.copyFrom(this.position);
+        }
+    }
+    Hepzi.Avatar = Avatar;
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
@@ -704,6 +689,21 @@ var Hepzi;
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
+    let ClientResponseType;
+    (function (ClientResponseType) {
+        ClientResponseType[ClientResponseType["Unknown"] = 0] = "Unknown";
+        ClientResponseType[ClientResponseType["Welcome"] = 1] = "Welcome";
+        ClientResponseType[ClientResponseType["Heartbeat"] = 2] = "Heartbeat";
+        ClientResponseType[ClientResponseType["InitialInstanceSession"] = 3] = "InitialInstanceSession";
+        ClientResponseType[ClientResponseType["AddInstanceSession"] = 4] = "AddInstanceSession";
+        ClientResponseType[ClientResponseType["RemoveInstanceSession"] = 5] = "RemoveInstanceSession";
+        ClientResponseType[ClientResponseType["InstanceMessage"] = 6] = "InstanceMessage";
+        ClientResponseType[ClientResponseType["KickClient"] = 7] = "KickClient";
+        ClientResponseType[ClientResponseType["MoveClient"] = 8] = "MoveClient";
+    })(ClientResponseType = Hepzi.ClientResponseType || (Hepzi.ClientResponseType = {}));
+})(Hepzi || (Hepzi = {}));
+var Hepzi;
+(function (Hepzi) {
     class EventEmitter {
         constructor() {
             this._callbacks = {};
@@ -834,7 +834,9 @@ var Hepzi;
         handleKey(keyInfo) {
             switch (keyInfo.type) {
                 case BABYLON.KeyboardEventTypes.KEYDOWN:
-                    console.debug("KEY DOWN: ", keyInfo.event.key, keyInfo.event.code, keyInfo.event.shiftKey);
+                    if (this._isDebug) {
+                        console.debug("KEY DOWN: ", keyInfo.event.key, keyInfo.event.code, keyInfo.event.shiftKey);
+                    }
                     switch (keyInfo.event.key) {
                         case '`':
                             this.emit('console', {});
@@ -845,7 +847,9 @@ var Hepzi;
                     }
                     break;
                 case BABYLON.KeyboardEventTypes.KEYUP:
-                    console.debug("KEY UP: ", keyInfo.event.key, keyInfo.event.code, keyInfo.event.shiftKey);
+                    if (this._isDebug) {
+                        console.debug("KEY UP: ", keyInfo.event.key, keyInfo.event.code, keyInfo.event.shiftKey);
+                    }
                     break;
             }
         }
@@ -1069,6 +1073,13 @@ var Hepzi;
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
+    class ConsoleEntry {
+        constructor(text, colour) {
+            this.text = text;
+            this.colour = colour;
+        }
+    }
+    Hepzi.ConsoleEntry = ConsoleEntry;
     class ApplicationClient extends Hepzi.EventEmitter {
         constructor(factory, userId) {
             super();
@@ -1120,10 +1131,7 @@ var Hepzi;
                 }
                 if (result.message && (this._isDebug || (result.category !== Hepzi.ClientCategory.Debug && result.category !== Hepzi.ClientCategory.Error))) {
                     ((typeof result.message === 'string' || result.message instanceof String) ? [result.message] : result.message)
-                        .forEach(message => this.emit('message', {
-                        text: message,
-                        colour: result.category == Hepzi.ClientCategory.Error ? 'text-danger' : 'text-secondary'
-                    }));
+                        .forEach(message => this.emit('message', new ConsoleEntry(message, result.category == Hepzi.ClientCategory.Error ? 'text-danger' : 'text-secondary')));
                 }
                 if (result.buffer) {
                     this.send(result.buffer);
@@ -1141,7 +1149,7 @@ var Hepzi;
                 }
                 if (result.message && (this._isDebug || (result.category !== Hepzi.ClientCategory.Debug &&
                     result.category !== Hepzi.ClientCategory.Error))) {
-                    this.emit('message', { text: result.message, colour: result.determineTextColourClass() });
+                    this.emit('message', new ConsoleEntry(result.message, result.determineTextColourClass()));
                 }
                 if (result.category !== Hepzi.ClientCategory.Error) {
                     if (result.avatar) {
@@ -1242,6 +1250,172 @@ var Hepzi;
 })(Hepzi || (Hepzi = {}));
 var Hepzi;
 (function (Hepzi) {
+    class ApplicationModel {
+        constructor(factory, knockout, jquery) {
+            this._applicationClient = null;
+            this._isConnecting = false;
+            if (!knockout) {
+                throw Error("Knockout not loaded.");
+            }
+            if (!jQuery) {
+                throw Error("JQuery not loaded.");
+            }
+            this._factory = factory;
+            this._configuration = factory.getConfiguration();
+            this._jquery = jquery;
+            this.command = knockout.observable();
+            this.console = knockout.observableArray(new Array());
+            this.credentials = knockout.observable();
+            this.isSending = knockout.observable(false);
+            this.password = knockout.observable();
+            this.showConsole = knockout.observable(false);
+            this.target = knockout.observable();
+            this.username = knockout.observable();
+            this.interpretCommand = this.interpretCommand.bind(this);
+            this.login = this.login.bind(this);
+            this.logout = this.logout.bind(this);
+            this.toggleConsole = this.toggleConsole.bind(this);
+        }
+        addConsoleLine(entry) {
+            this.console.push(entry);
+            this.console.splice(0, this.console.length - this._configuration.consoleLines);
+            window.setTimeout(this.scrollConsoleToBottom, this._configuration.consoleScrollDelayMilliseconds);
+        }
+        addToast(text, title) {
+            const $template = this._jquery('#toast-template');
+            if ($template) {
+                const $toast = $template.clone();
+                $template.parent().prepend($toast);
+                if (title) {
+                    $toast.find('.toast-header strong').text(title);
+                }
+                $toast.find('.toast-body').text(text);
+                $toast.toast('show');
+                $toast.on('hidden.bs.toast', function () {
+                    $toast.toast('dispose');
+                    $toast.remove();
+                });
+            }
+        }
+        applyTarget(target) {
+            console.debug(`TARGET: ${target && target.name ? target.name : '<no-one>'}`);
+            this.target(target !== null && target !== void 0 ? target : undefined);
+            this.addToast(`${target && target.name ? target.name : '<no-one>'}`, 'Target');
+        }
+        createClient(userId, sessionId) {
+            this._isConnecting = false;
+            this.console([]);
+            this.showConsole(false);
+            if (this.credentials()) {
+                const thisClient = this._applicationClient = this._factory.createApplicationClient(userId);
+                const self = this;
+                thisClient.on('close', function () { if (self._applicationClient == thisClient) {
+                    self.logout();
+                } });
+                thisClient.on('connected', function () { if (self._applicationClient == thisClient) {
+                    self._isConnecting = false;
+                } });
+                thisClient.on('console', function () { if (self._applicationClient == thisClient) {
+                    self.toggleConsole();
+                } });
+                thisClient.on('message', function (data) { if (self._applicationClient == thisClient) {
+                    self.addConsoleLine(data);
+                } });
+                thisClient.on('target', function (target) { if (self._applicationClient == thisClient) {
+                    self.applyTarget(target);
+                } });
+                this._isConnecting = true;
+                thisClient.connect(sessionId);
+            }
+        }
+        interpretCommand() {
+            if (this._applicationClient) {
+                this._applicationClient.interpretCommand((this.command() || '').trim());
+                this.command('');
+            }
+        }
+        login() {
+            var _a, _b;
+            if (!this.isSending()) {
+                const self = this;
+                const username = (_b = (_a = this.username()) === null || _a === void 0 ? void 0 : _a.trim()) !== null && _b !== void 0 ? _b : '';
+                const password = this.password();
+                this.credentials(null);
+                if (username && password) {
+                    this.isSending(true);
+                    fetch("/login", {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    })
+                        .then(function (response) {
+                        switch (response.status) {
+                            case 200:
+                                response.json()
+                                    .then(function (credentials) {
+                                    if (credentials && credentials.username && credentials.userId && credentials.sessionId) {
+                                        self.credentials(credentials);
+                                        self.createClient(credentials.userId, credentials.sessionId);
+                                        self.isSending(false);
+                                        window.setTimeout(function () { var _a; (_a = document.getElementById('canvas')) === null || _a === void 0 ? void 0 : _a.focus(); }, 500);
+                                    }
+                                    else {
+                                        self.isSending(false);
+                                        self.addToast('Invalid response from server');
+                                    }
+                                })
+                                    .catch(function (err) {
+                                    console.log(err);
+                                    self.isSending(false);
+                                    self.addToast('Something went wrong creating connection to server.');
+                                });
+                                break;
+                            case 401:
+                                self.isSending(false);
+                                self.addToast('Username or password is incorrect.');
+                                break;
+                            default:
+                                self.isSending(false);
+                                self.addToast('HTTP Error (Status Code: ' + response.status + ")");
+                                break;
+                        }
+                    })
+                        .catch(function (error) {
+                        self.isSending(false);
+                        console.error(error);
+                        self.addToast('Failed to connect to login server.');
+                    });
+                }
+            }
+        }
+        logout() {
+            console.log('Logging out ...');
+            if (this._isConnecting) {
+                this.addToast('Unexpected disconnect');
+                this._isConnecting = false;
+            }
+            if (this.credentials()) {
+                this.credentials(null);
+            }
+            if (this._applicationClient) {
+                this._applicationClient.disconnect();
+                this._applicationClient = null;
+            }
+        }
+        scrollConsoleToBottom() {
+            const element = document.getElementById('console');
+            if (element) {
+                element.scrollTop = element.scrollHeight - element.clientHeight;
+            }
+        }
+        toggleConsole() {
+            this.showConsole(!this.showConsole());
+        }
+    }
+    Hepzi.ApplicationModel = ApplicationModel;
+})(Hepzi || (Hepzi = {}));
+var Hepzi;
+(function (Hepzi) {
     class Configuration {
         constructor() {
             this.consoleLines = 100;
@@ -1262,7 +1436,8 @@ var Hepzi;
         createInputHandler() { return new Hepzi.InputHandler(this); }
         createSceneManager(canvasName, inputHandler) { return new Hepzi.SceneManager(this, canvasName, inputHandler); }
         createWebSocketClient(options) { return new Hepzi.WebSocketClient(Object.assign(Object.assign({}, options), { isDebug: this.isDebug('WebSocketClient') || (options === null || options === void 0 ? void 0 : options.isDebug) })); }
-        debug(className) { this._debugClasses[className] = true; }
+        debug(...classNames) { const self = this; classNames.forEach(className => self._debugClasses[className] = true); }
+        getApplicationModel() { var _a; return (_a = this._applicationModel) !== null && _a !== void 0 ? _a : (this._applicationModel = new Hepzi.ApplicationModel(this, window.ko, window.jQuery)); }
         getClientResponseParser() { var _a; return (_a = this._clientResponseParser) !== null && _a !== void 0 ? _a : (this._clientResponseParser = new Hepzi.ClientResponseParser(this)); }
         getConfiguration() { var _a; return (_a = this._configuration) !== null && _a !== void 0 ? _a : (this._configuration = new Hepzi.Configuration()); }
         isDebug(className) { return !!this._debugClasses[className]; }
